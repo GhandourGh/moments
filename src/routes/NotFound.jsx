@@ -5,7 +5,6 @@ import { COUPLE } from "../couple.js";
 export default function NotFound() {
   return (
     <section className="page-section nf">
-      <p className="section-eyebrow">404</p>
       <h1 className="nf-title">This page slipped away.</h1>
       <p className="nf-body">
         That link doesn't go anywhere on {COUPLE.initials}'s gallery. Head back

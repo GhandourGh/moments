@@ -1,0 +1,548 @@
+/* Tonight page — recent strip, scroll velocity, polaroid collage,
+   memory cards, and the schedule timeline.
+   Everything below renders only on the Tonight route. */
+
+/* --------------------------- Recent strip ------------------------- */
+
+.strip {
+  padding: 44px 0 52px;
+}
+.strip-head {
+  margin: 0 auto 14px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+.strip-head-main {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.strip-title,
+.tn-title {
+  letter-spacing: -0.005em;
+  line-height: 1.05;
+}
+.strip-title {
+  font-size: clamp(28px, 4vw, 40px);
+}
+.strip-sub {
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.strip-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.strip-counter {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--ink-mute);
+  margin-right: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.strip-nav-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--ink-soft);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.strip-nav-btn:hover {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.strip-nav-btn:active { transform: scale(0.96); }
+
+.strip-rail {
+  overflow: hidden;
+  padding: 10px 20px 16px;
+  touch-action: pan-y pinch-zoom;
+  /* Soft edge fade */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 3%, #000 97%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 3%, #000 97%, transparent 100%);
+}
+
+.strip-track {
+  display: flex;
+  gap: 14px;
+  width: max-content;
+  padding: 4px 2px;
+  will-change: transform;
+  cursor: grab;
+}
+
+.strip-track:active {
+  cursor: grabbing;
+}
+
+.strip-card {
+  position: relative;
+  flex: 0 0 auto;
+  width: 180px;
+  aspect-ratio: 3 / 4;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--paper-2);
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(28, 26, 23, 0.06),
+              0 12px 30px rgba(28, 26, 23, 0.10);
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.strip-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 1px 0 rgba(28, 26, 23, 0.06),
+              0 16px 36px rgba(28, 26, 23, 0.14);
+}
+.strip-card-active {
+  box-shadow: 0 0 0 2px var(--brand),
+              0 12px 30px rgba(28, 26, 23, 0.12);
+}
+.strip-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 14px;
+}
+
+@media (max-width: 640px) {
+  .strip-card { width: 40vw; border-radius: 12px; }
+  .strip-card img { border-radius: 12px; }
+  .strip-head {
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+}
+
+@media (max-width: 720px) {
+  .strip { padding: 24px 0 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .strip-track { will-change: auto; cursor: default; }
+  .strip-card { transition: none; }
+  .strip-card:hover { transform: none; }
+}
+
+/* ------------------------ Scroll velocity band ------------------- */
+
+.sv-band {
+  background: var(--ink);
+  color: oklch(98% 0 0 / 0.92);
+  padding: 6px 0 7px;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  user-select: none;
+}
+
+.sv-parallax {
+  position: relative;
+  overflow: hidden;
+}
+
+.sv-scroller {
+  display: flex;
+  white-space: nowrap;
+  width: max-content;
+  will-change: transform;
+}
+
+.sv-copy {
+  flex-shrink: 0;
+}
+
+.sv-text {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  font-size: clamp(14px, 3.2vw, 18px);
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  color: oklch(98% 0 0 / 0.88);
+  padding-right: 0.2em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-band .sv-scroller {
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+    transform: none !important;
+  }
+  .sv-copy:not(:first-child) { display: none; }
+  .sv-band { padding: 8px 16px; text-align: center; }
+}
+
+/* ------------------------ Night moments (polaroids) --------------- */
+
+.ntable {
+  padding: 44px 0 52px;
+}
+
+.ntable-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.ntable-head {
+  margin-bottom: 24px;
+}
+
+.ntable-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-deep);
+}
+
+.ntable-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 0 var(--brand-glow);
+  animation: ntable-pulse 2.4s var(--ease-out) infinite;
+}
+
+@keyframes ntable-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--brand-glow); }
+  50% { box-shadow: 0 0 0 7px oklch(58% 0.13 22 / 0); }
+}
+
+.ntable-whisper {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  font-style: italic;
+  font-size: clamp(24px, 4.5vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-wrap: balance;
+  margin: 0;
+}
+
+.ntable-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(10px, 2.5vw, 18px);
+  align-items: end;
+  margin-bottom: 0;
+}
+
+/* ------------------------ Memory card (keepsake frame) ------------ */
+
+.mem-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding: clamp(5px, 1vw, 7px) clamp(5px, 1vw, 7px) clamp(6px, 1.2vw, 8px);
+  border: 1px solid var(--line);
+  background: var(--surface-paper-grad);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 10px 28px rgba(28, 26, 23, 0.10),
+    0 2px 6px rgba(28, 26, 23, 0.04);
+  text-align: center;
+}
+
+button.mem-card {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    box-shadow var(--dur-ui) var(--ease-out),
+    transform var(--dur-ui) var(--ease-out);
+}
+
+.mem-card-photo {
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--paper-2);
+  border: 1px solid rgba(28, 26, 23, 0.06);
+}
+
+.mem-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.45s var(--ease-out);
+}
+
+.mem-card-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: clamp(5px, 1.2vw, 7px) 2px 0;
+}
+
+.mem-card-rule {
+  display: block;
+  width: 18px;
+  height: 1px;
+  background: var(--brand);
+  opacity: 0.65;
+  margin-bottom: 1px;
+}
+
+.mem-card-initials {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  font-size: clamp(12px, 2.8vw, 15px);
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  line-height: 1;
+  margin: 0;
+}
+
+.mem-card-date {
+  font-size: clamp(6px, 1.5vw, 8px);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.ntable-slot {
+  opacity: 0;
+  transform: translate3d(0, 12px, 0) rotate(var(--rot, 0deg));
+  transition:
+    opacity 0.45s var(--ease-out),
+    transform 0.45s var(--ease-out),
+    box-shadow var(--dur-ui) var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 70ms + 60ms);
+}
+
+.ntable-visible .ntable-slot {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg));
+}
+
+.ntable-slot-0 {
+  --rot: -2deg;
+  margin-bottom: 12px;
+}
+
+.ntable-slot-1 {
+  --rot: 1.2deg;
+  z-index: 2;
+}
+
+.ntable-slot-2 {
+  --rot: -1.5deg;
+  margin-bottom: 8px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.mem-card:hover {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.95) inset,
+      0 18px 40px rgba(28, 26, 23, 0.14);
+    z-index: 3;
+  }
+  button.mem-card:hover .mem-card-photo img {
+    transform: scale(1.03);
+  }
+}
+
+button.mem-card:active {
+  transform: scale(0.96) rotate(var(--rot, 0deg));
+}
+
+@media (max-width: 480px) {
+  .ntable { padding-bottom: 36px; }
+  .ntable-inner { padding: 0 16px; }
+  .ntable-grid { gap: 8px; }
+  .ntable-slot-0 { margin-bottom: 6px; }
+  .ntable-slot-2 { margin-bottom: 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ntable-live-dot { animation: none; }
+  .ntable-slot {
+    opacity: 1;
+    transform: rotate(var(--rot, 0deg));
+    transition: none;
+  }
+  button.mem-card { transition: none; }
+  .mem-card-photo img { transition: none; }
+}
+
+/* ---- Tonight: schedule ----------------------------------------- */
+
+.tn-section {
+  max-width: none;
+  margin: 0;
+  padding: 48px 24px 56px;
+}
+
+.tn-head {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 18px;
+  margin-bottom: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 16px;
+}
+.tn-title {
+  font-size: clamp(28px, 4.5vw, 44px);
+  letter-spacing: -0.01em;
+  flex: 1 1 auto;
+}
+
+.dress-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--brand-tint-soft);
+  color: var(--brand-deep);
+  border: 1px solid var(--brand-tint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.dress-chip-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--brand);
+}
+
+.timeline {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  max-width: 720px;
+}
+.tl-row {
+  display: grid;
+  grid-template-columns: 92px 24px 1fr;
+  gap: 14px;
+  align-items: stretch;
+  position: relative;
+}
+.tl-time {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--ink);
+  padding: 14px 0 18px;
+  letter-spacing: 0.01em;
+  text-align: right;
+}
+.tl-marker {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+/* The vertical rule connecting all rows */
+.tl-marker::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: var(--line-strong);
+}
+.tl-row:first-child .tl-marker::before { top: 22px; }
+.tl-row:last-child .tl-marker::before { bottom: calc(100% - 22px); }
+.tl-dot {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  margin-top: 18px;
+  position: relative;
+  z-index: 1;
+}
+.tl-body {
+  padding: 14px 0 18px;
+}
+.tl-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  margin-bottom: 2px;
+}
+.tl-detail {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* Live "now" indicator on the schedule timeline. Reuses .ntable-live-dot
+   for the pulsing fill so the rule is in one place. */
+.tl-row--past .tl-time,
+.tl-row--past .tl-name,
+.tl-row--past .tl-detail { opacity: 0.55; }
+.tl-row--past .tl-dot {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.tl-dot--live {
+  width: 11px;
+  height: 11px;
+  margin-top: 18px;
+  border: 0;
+}
+.tl-now-pill {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--brand-tint-soft);
+  color: var(--brand-deep);
+  border: 1px solid var(--brand-tint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+@media (max-width: 720px) {
+  .tn-section { padding: 36px 16px 44px; }
+  .tn-head { gap: 10px; margin-bottom: 18px; }
+  .tl-row { grid-template-columns: 72px 20px 1fr; gap: 10px; }
+  .tl-time { font-size: 18px; padding: 12px 0 14px; }
+  .tl-body { padding: 12px 0 14px; }
+}

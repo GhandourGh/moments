@@ -12,7 +12,6 @@ export default function Story() {
     <section className="page-section page-section-wide">
       <BackLink />
       <header className="section-head">
-        <p className="section-eyebrow">The story</p>
         <h1 className="section-title">How we got here</h1>
         <p className="section-lede">
           The short version of {COUPLE.names}. The long version comes later

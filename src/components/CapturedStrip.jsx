@@ -214,7 +214,13 @@ export default function CapturedStrip({ shots }) {
   if (!total) return null;
 
   return (
-    <section className="strip section-band section-band--cream" id="gallery">
+    <motion.section
+      className="strip section-band section-band--cream"
+      id="gallery"
+      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
+    >
       <div className="strip-head section-inner">
         <div className="strip-head-main">
           <h2 className="strip-title display-title">Just captured</h2>
@@ -277,7 +283,7 @@ export default function CapturedStrip({ shots }) {
           onIndexChange={setLightboxIndex}
         />
       )}
-    </section>
+    </motion.section>
   );
 }
 

@@ -38,9 +38,9 @@ export default function WelcomeModal({ onClose }) {
           take lands in a shared gallery the whole night sees.
         </p>
         <ul className="wm-bullets">
-          <li><Dot /> Photos stay between you and the couple.</li>
-          <li><Dot /> No app, no account — just this link.</li>
-          <li><Dot /> You can take as many photos as you like.</li>
+          <li><BulletIcon name="lock" /> Photos stay between you and the couple.</li>
+          <li><BulletIcon name="link" /> Lives in your browser — pin it for one-tap access.</li>
+          <li><BulletIcon name="infinity" /> Take as many photos as you like.</li>
         </ul>
         <p className="wm-consent">
           By using the app you agree your photos may be shared with the
@@ -57,6 +57,30 @@ export default function WelcomeModal({ onClose }) {
   );
 }
 
-function Dot() {
-  return <span className="wm-dot" aria-hidden />;
+function BulletIcon({ name }) {
+  const common = {
+    width: 14, height: 14, viewBox: "0 0 24 24",
+    fill: "none", stroke: "currentColor",
+    strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round",
+    className: "wm-bullet-icon", "aria-hidden": true,
+  };
+  if (name === "lock") return (
+    <svg {...common}>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+  if (name === "link") return (
+    <svg {...common}>
+      <path d="M10 13a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.5 1.5" />
+      <path d="M14 11a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1.5-1.5" />
+    </svg>
+  );
+  // infinity
+  return (
+    <svg {...common}>
+      <path d="M8 8a4 4 0 1 1 0 8c-2-2-4-6-8-6-1 0 0 0 0 0" style={{ display: "none" }} />
+      <path d="M17 8a4 4 0 1 1 0 8c-3 0-4-8-10-8a4 4 0 1 0 0 8c6 0 7-8 10-8Z" />
+    </svg>
+  );
 }

@@ -25,6 +25,14 @@ import { useFocusTrap } from "../hooks/useFocusTrap.js";
  *   - Double-tap toggles 1x ↔ 2x.
  *   - Transform resets when photo index changes.
  */
+function videoDownloadName(shot) {
+  // Pick an extension that matches the MIME we recorded with, falling back
+  // to the URL hash if the blob's lost its type along the way.
+  const ext = "webm";
+  const base = shot?.id ? `tonight-${shot.id}` : "tonight";
+  return `${base}.${ext}`;
+}
+
 const MAX_SCALE = 4;
 const MIN_SCALE = 1;
 const TAP_PX = 8;     // movement threshold to disqualify a tap
@@ -294,6 +302,31 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
     }
   }
 
+  // Web Share API — only render the button when the platform can share
+  // a File. Falls back silently to the existing Original / Keepsake when
+  // the browser can't (desktop Chrome, Firefox, etc.).
+  const [shareBusy, setShareBusy] = useState(false);
+  const canShareFiles =
+    typeof navigator !== "undefined" &&
+    typeof navigator.canShare === "function" &&
+    typeof navigator.share === "function";
+
+  async function shareCurrent() {
+    if (!current?.url || shareBusy || !canShareFiles) return;
+    setShareBusy(true);
+    try {
+      const res = await fetch(current.url);
+      const blob = await res.blob();
+      const file = new File([blob], plainName, { type: blob.type || "image/jpeg" });
+      if (!navigator.canShare({ files: [file] })) return;
+      await navigator.share({ files: [file], title: "A moment from tonight" });
+    } catch {
+      /* user cancel or share unsupported — no toast needed */
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
   const timeLabel = current?.takenAt
     ? new Date(current.takenAt).toLocaleTimeString([], {
         hour: "numeric",
@@ -303,6 +336,7 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
 
   if (!current) return null;
 
+  const isVideo = current.mediaType === "video";
   const zoomed = t.s > 1;
 
   return (
@@ -340,32 +374,44 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
           </button>
         )}
 
-        <img
-          ref={imgRef}
-          className="lb-img"
-          src={current.url}
-          alt=""
-          draggable={false}
-          // Stop click bubbling — we handle close via pointerup so the
-          // movement-vs-tap distinction stays clean.
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          style={{
-            transform: `translate3d(${t.x}px, ${t.y}px, 0) scale(${t.s})`,
-            // No transition during a continuous gesture (wheel / pinch / pan)
-            // — that's what was making zoom feel shaky.
-            transition:
-              pointers.current.size || interactingRef.current
-                ? "none"
-                : "transform 0.18s ease",
-            cursor: zoomed ? "grab" : "zoom-out",
-            touchAction: "none",
-            willChange: "transform",
-          }}
-        />
+        {isVideo ? (
+          <video
+            className="lb-video"
+            src={current.url}
+            controls
+            playsInline
+            autoPlay
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <img
+            ref={imgRef}
+            className="lb-img"
+            src={current.url}
+            alt=""
+            draggable={false}
+            // Stop click bubbling — we handle close via pointerup so the
+            // movement-vs-tap distinction stays clean.
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            style={{
+              transform: `translate3d(${t.x}px, ${t.y}px, 0) scale(${t.s})`,
+              // No transition during a continuous gesture (wheel / pinch / pan)
+              // — that's what was making zoom feel shaky.
+              transition:
+                pointers.current.size || interactingRef.current
+                  ? "none"
+                  : "transform 0.18s ease",
+              cursor: zoomed ? "grab" : "zoom-out",
+              touchAction: "none",
+              willChange: "transform",
+            }}
+          />
+        )}
 
         {total > 1 && !zoomed && (
           <button
@@ -379,7 +425,7 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
       </div>
 
       <footer className="lb-footer" onClick={(e) => e.stopPropagation()}>
-        {zoomed && (
+        {!isVideo && zoomed && (
           <button
             type="button"
             className="lb-download lb-reset"
@@ -389,25 +435,39 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
           </button>
         )}
         <div className="lb-downloads">
+          {canShareFiles && (
+            <button
+              type="button"
+              className="lb-download"
+              onClick={shareCurrent}
+              disabled={shareBusy}
+              aria-label={isVideo ? "Share this video" : "Share this photo"}
+            >
+              <ShareIcon />
+              <span>{shareBusy ? "Sharing…" : "Share"}</span>
+            </button>
+          )}
           <a
             className="lb-download"
             href={current.url}
-            download={plainName}
-            aria-label="Download original photo"
+            download={isVideo ? videoDownloadName(current) : plainName}
+            aria-label={isVideo ? "Download original video" : "Download original photo"}
           >
             <DownloadIcon />
             <span>Original</span>
           </a>
-          <button
-            type="button"
-            className="lb-download lb-download-card"
-            onClick={downloadKeepsake}
-            disabled={cardBusy}
-            aria-label="Download with initials and date card"
-          >
-            <CardIcon />
-            <span>{cardBusy ? "Saving…" : "Keepsake card"}</span>
-          </button>
+          {!isVideo && (
+            <button
+              type="button"
+              className="lb-download lb-download-card"
+              onClick={downloadKeepsake}
+              disabled={cardBusy}
+              aria-label="Download with initials and date card"
+            >
+              <CardIcon />
+              <span>{cardBusy ? "Saving…" : "Keepsake card"}</span>
+            </button>
+          )}
         </div>
       </footer>
     </div>
@@ -423,6 +483,16 @@ const ICON = {
   strokeLinecap: "round",
   strokeLinejoin: "round",
 };
+
+function ShareIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...ICON} aria-hidden>
+      <path d="M12 3v13" />
+      <path d="M7 8l5-5 5 5" />
+      <path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+    </svg>
+  );
+}
 
 function ChevronIcon({ dir }) {
   return (

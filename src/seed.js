@@ -1,10 +1,10 @@
 /**
  * Seed gallery — real placeholder photos served from /public/seed/.
- * Pre-processed (HEIC → JPEG, max 1400 px, quality 78) so the gallery
- * loads quickly. Replace or extend the file list to change the seed set.
+ * Pre-processed (max 1400 px, quality 78) so the gallery loads quickly.
+ * Eight Pexels wedding photos — regenerate with `npm run compress-seed`.
  */
 
-const FILES = Array.from({ length: 9 }, (_, i) =>
+const FILES = Array.from({ length: 8 }, (_, i) =>
   `/seed/seed-${String(i + 1).padStart(2, "0")}.jpg`
 );
 

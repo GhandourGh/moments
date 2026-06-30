@@ -1,0 +1,861 @@
+/* ----------------------------- Camera -----------------------------
+   Full-screen camera overlay: live <video>, shutter, error fallback,
+   review bar, last-photo thumb.
+------------------------------------------------------------------- */
+
+.cam {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cam { animation: none !important; }
+}
+.cam-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+.cam-top {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 18px)
+    calc(env(safe-area-inset-right, 0px) + 18px)
+    0
+    calc(env(safe-area-inset-left, 0px) + 18px);
+  z-index: 2;
+}
+.cam-top-start {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cam-top-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cam-torch-btn--on {
+  color: #fff;
+  background: rgba(255, 200, 80, 0.35);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cam-torch-btn--on:hover { background: rgba(255, 200, 80, 0.48); }
+}
+.cam-zoom-reset {
+  width: auto;
+  min-width: 44px;
+  padding: 0 10px;
+  border-radius: 999px;
+}
+.cam-zoom-reset-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+/* Flash mode states — the button stays the same shape; only its tone
+   shifts. OFF reads as dimmed/inactive, ON as fully lit, AUTO sits in
+   between so the cycle has clear visual progression. */
+.cam-flash-btn--off { color: rgba(255, 255, 255, 0.78); }
+.cam-flash-btn--on {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.28);
+}
+.cam-flash-btn--auto {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cam-flash-btn--on:hover { background: rgba(255, 255, 255, 0.38); }
+  .cam-flash-btn--auto:hover { background: rgba(255, 255, 255, 0.24); }
+}
+.cam-icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.15s, transform 0.15s;
+}
+.cam-icon-btn svg { display: block; }
+.cam-flash-glyph { position: relative; width: 20px; height: 20px; display: block; }
+.cam-flash-glyph-inner { position: absolute; inset: 0; display: grid; place-items: center; }
+@media (prefers-reduced-motion: reduce) {
+  .cam-icon-btn:active { transform: none; }
+}
+.cam-icon-btn:hover { background: rgba(0, 0, 0, 0.65); }
+.cam-icon-btn:active { transform: scale(0.96); }
+
+.cam-bottom {
+  position: relative;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding:
+    24px
+    0
+    calc(env(safe-area-inset-bottom, 0px) + 36px);
+  z-index: 2;
+}
+.cam-library-link {
+  background: none;
+  border: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.cam-library-link:hover { color: #fff; }
+
+.cam-bottom-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 56px;
+  align-items: end;
+  width: 100%;
+  max-width: 440px;
+  padding-inline: 16px;
+  gap: 8px;
+}
+.cam-bottom-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.cam-bottom-side { min-height: 1px; }
+.cam-bottom-side--end {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6px;
+}
+.cam-flip-btn { flex-shrink: 0; }
+
+/* ---------- Flash & shutter feedback ----------
+   Retina Flash: single 400 ms linear keyframe (100 ms in, 200 ms hold,
+   100 ms out). JS captures at 300 ms while opacity is still 1.
+   Snap-pulse: shutter ack for non-flash captures only. */
+.cam-screen-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  background: #FFFFFF;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+.cam-screen-flash--active {
+  animation: cam-retina-flash 400ms linear forwards;
+}
+@keyframes cam-retina-flash {
+  0%   { opacity: 0; }
+  25%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Ring light — selfie video flash. A thick inset white glow lights the
+   subject's face from the panel edges without covering the preview or
+   the UI underneath. Sits below buttons (z-index 1) so the shutter, the
+   zoom pill, and the mode toggle all stay tappable. */
+.cam-ring-light {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms linear;
+  /* The "ring" is built from layered inset box-shadows on a transparent
+     element. A solid 18px white rim feathered with a wider soft glow
+     gives the face fill light without a hard frame. */
+  box-shadow:
+    inset 0 0 0 18px #fff,
+    inset 0 0 60px 24px rgba(255, 255, 255, 0.85);
+}
+.cam-ring-light--on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .cam-ring-light { transition: none; }
+}
+
+/* Composition-guide overlay — draws the chosen aspect rectangle inside
+   the live preview by darkening everything outside it. Pure visual; the
+   capture is not cropped. */
+.cam-ratio-guide {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+.cam-ratio-guide::before {
+  /* Inner frame at the chosen aspect, centered. Fits to whichever edge
+     of the viewport is the constraining one. */
+  content: "";
+  width: min(100%, calc(100vh * var(--ratio)));
+  max-width: 100%;
+  aspect-ratio: var(--ratio);
+  border: 1px solid oklch(98% 0 0 / 0.6);
+  box-shadow:
+    /* Dim the area outside the frame by 28% — readable but not heavy. */
+    0 0 0 100vmax oklch(0% 0 0 / 0.28);
+  background: transparent;
+}
+
+/* Ratio toggle button — same chip shape as the flash button. The label
+   inside the round chrome is small all-caps so 4:3 / 16:9 fit. */
+.cam-ratio-btn { width: auto; min-width: 44px; padding: 0 10px; border-radius: 999px; }
+.cam-ratio-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.cam-ratio-btn--free .cam-ratio-label { opacity: 0.78; }
+
+/* Floating zoom readout while pinching (iPhone-style). */
+.cam-zoom-hud {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 4;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.52);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
+  transform: translate(-50%, -50%) scale(0.88);
+  opacity: 0;
+  transition:
+    opacity 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.cam-zoom-hud:not(.cam-zoom-hud--hidden) {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Tap-to-focus reticle — Fossify-style 50px yellow square, 500ms linear fade. */
+.cam-focus-ring {
+  position: absolute;
+  z-index: 3;
+  width: 50px;
+  height: 50px;
+  margin: -25px 0 0 -25px;
+  border-radius: 2px;
+  border: 1.5px solid #FFCC00;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  animation: cam-focus-ring 500ms linear forwards;
+}
+@keyframes cam-focus-ring {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cam-zoom-hud { transition: none; }
+
+  .cam-focus-ring { animation: cam-focus-ring-reduced 500ms linear forwards; }
+  @keyframes cam-focus-ring-reduced {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}
+
+.cam-snap-pulse {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+.cam-snap-pulse--play {
+  animation: cam-snap-pulse 180ms var(--ease-out) 1;
+}
+@keyframes cam-snap-pulse {
+  0%   { opacity: 0; }
+  18%  { opacity: 0.72; }
+  100% { opacity: 0; }
+}
+
+
+/* ---------- Continuous zoom rail (hardware lens) ---------- */
+.cam-zoom-rail {
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.cam-zoom-rail--active .cam-zoom-readout {
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.22);
+}
+.cam-zoom-readout {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.cam-zoom-readout:active { transform: scale(0.96); }
+.cam-zoom-track-wrap {
+  position: relative;
+  width: 100%;
+  height: 28px;
+  display: flex;
+  align-items: center;
+}
+.cam-zoom-ticks {
+  position: absolute;
+  inset: 0 8px;
+  pointer-events: none;
+}
+.cam-zoom-tick {
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  transform: translateX(-50%);
+}
+.cam-zoom-tick--on {
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+}
+.cam-zoom-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  margin: 0;
+  cursor: pointer;
+}
+.cam-zoom-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    #fff 0%,
+    #fff var(--pct, 0%),
+    rgba(255, 255, 255, 0.28) var(--pct, 0%),
+    rgba(255, 255, 255, 0.28) 100%
+  );
+}
+.cam-zoom-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.cam-zoom-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+}
+.cam-zoom-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: #fff;
+}
+.cam-zoom-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.cam-zoom-presets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.cam-zoom-preset {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 10px;
+  min-width: 36px;
+  min-height: 28px;
+  background: rgba(0, 0, 0, 0.38);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.cam-zoom-preset:active { transform: scale(0.96); }
+.cam-zoom-preset--on {
+  background: #fff;
+  color: var(--ink);
+}
+
+.cam-shutter {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: transparent;
+  border: 4px solid rgba(255, 255, 255, 0.95);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  transition: transform 0.1s var(--ease-out);
+  touch-action: manipulation;
+}
+.cam-shutter--pressed,
+.cam-shutter:active { transform: scale(0.96); }
+.cam-shutter:disabled { opacity: 0.5; }
+.cam-shutter-inner {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.08s var(--ease-out);
+}
+.cam-shutter--pressed .cam-shutter-inner,
+.cam-shutter:active .cam-shutter-inner { transform: scale(0.92); }
+
+/* Burst mode — long-press in progress. Outer ring pulses softly to
+   signal "still firing." Inner pip stays compressed to read as held. */
+.cam-shutter--burst {
+  animation: cam-shutter-burst 700ms ease-in-out infinite;
+}
+.cam-shutter--burst .cam-shutter-inner { transform: scale(0.85); }
+
+@keyframes cam-shutter-burst {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(98% 0 0 / 0); }
+  50%      { box-shadow: 0 0 0 10px oklch(98% 0 0 / 0.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cam-shutter--burst { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cam-shutter--pressed,
+  .cam-shutter:active { transform: none; }
+  .cam-shutter--pressed .cam-shutter-inner,
+  .cam-shutter:active .cam-shutter-inner { transform: none; }
+  /* Skip the screen flash entirely — bright pulses are exactly what
+     prefers-reduced-motion users are asking us not to do. */
+  .cam-screen-flash,
+  .cam-screen-flash--active { animation: none; opacity: 0 !important; }
+  .cam-snap-pulse--play { animation: none; }
+}
+
+.cam-error {
+  position: relative;
+  z-index: 2;
+  margin: auto;
+  max-width: 340px;
+  padding: 24px;
+  text-align: center;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.cam-error p {
+  font-size: 15px;
+  line-height: 1.45;
+}
+.cam-error-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.cam-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.cta-small {
+  padding: 12px 22px;
+  font-size: 13px;
+}
+
+/* The frozen preview that replaces the live feed during review */
+.cam-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1; /* above the still-running <video> */
+}
+
+/* Review bar — Retake | Keep */
+.cam-review {
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  padding:
+    24px
+    calc(env(safe-area-inset-right, 0px) + 18px)
+    calc(env(safe-area-inset-bottom, 0px) + 36px)
+    calc(env(safe-area-inset-left, 0px) + 18px);
+}
+.cam-review-btn {
+  flex: 1 1 0;
+  max-width: 220px;
+  padding: 16px 22px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 0;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.2s, background 0.15s;
+}
+.cam-review-btn:active { transform: scale(0.96); }
+.cam-review-secondary {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.cam-review-secondary:hover { background: rgba(255, 255, 255, 0.26); }
+.cam-review-primary {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+.cam-review-primary:hover { background: #f8f4ec; }
+
+/* Pre-permission explainer — shown before the browser permission dialog. */
+.cam-permission {
+  position: relative;
+  z-index: 3;
+  margin: auto;
+  max-width: 320px;
+  padding: 28px 24px;
+  text-align: center;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.cam-permission-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.9);
+}
+.cam-permission-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.cam-permission-copy {
+  font-size: 15px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+}
+.cam-permission-cta {
+  width: 100%;
+  max-width: 280px;
+  margin-top: 4px;
+}
+.cam-permission-skip {
+  background: none;
+  border: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+.cam-permission-skip:hover { color: #fff; }
+
+/* Last-photo thumbnail — bottom-left affordance like native camera apps. */
+.cam-last-photo {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.12s, border-color 0.15s;
+}
+.cam-last-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cam-last-photo:active { transform: scale(0.94); }
+@media (hover: hover) and (pointer: fine) {
+  .cam-last-photo:hover { border-color: #fff; }
+}
+
+/* ---------- Zoom pill ----------
+   Compact discrete control sitting above the shutter. Visible only when
+   the active lens has at least one step beyond 1× (or the CSS fallback
+   path can reach 2×). Picks up tabular numerals so the labels don't
+   shift width when the active digit grows. */
+.cam-zoom-pill {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-variant-numeric: tabular-nums;
+}
+.cam-zoom-step {
+  /* Inner pill — 999px minus 4px outer padding → still pill-shaped at
+     any width. Min hit area 40×40 via padding. */
+  position: relative;
+  min-width: 40px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+/* Extend the hit area to 44×44 without changing the visual size. */
+.cam-zoom-step::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+.cam-zoom-step::after {
+  content: "×";
+  margin-left: 1px;
+  opacity: 0.8;
+  font-weight: 500;
+}
+.cam-zoom-step:active { transform: scale(0.96); }
+.cam-zoom-step--active {
+  background: oklch(98% 0 0);
+  color: oklch(20% 0.01 25);
+  font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cam-zoom-step,
+  .cam-zoom-step:active { transition: none; transform: none; }
+}
+
+/* ---------- Video mode ----------
+   Mode toggle is a flat pill below the shutter. The shutter itself swaps
+   to a red dot in video mode and morphs to a rounded square while
+   recording — that single affordance handles start, stop, and state. */
+.cam-mode-toggle {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  overflow: hidden;
+  isolation: isolate;
+}
+/* Sliding thumb — width is half the pill (minus the side padding) and
+   translates between the two slots. One spring-eased transform handles
+   the whole motion so the toggle reads as a single object. */
+.cam-mode-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  transform: translate3d(0, 0, 0);
+  transition: transform 320ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  z-index: 0;
+}
+.cam-mode-toggle--video .cam-mode-thumb {
+  transform: translate3d(100%, 0, 0);
+}
+.cam-mode-opt {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 320ms cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+.cam-mode-opt--on {
+  color: var(--ink);
+}
+
+/* Recording shutter — inner pip smoothly recolors when entering video mode
+   and morphs to a small square while recording. One unified transition on
+   the inner element so the mode flip and the start-recording flip both
+   feel like the same physical object responding. */
+.cam-shutter-inner {
+  transition:
+    transform 0.08s var(--ease-out),
+    background-color 280ms cubic-bezier(0.4, 0.0, 0.2, 1),
+    width 240ms cubic-bezier(0.4, 0.0, 0.2, 1),
+    height 240ms cubic-bezier(0.4, 0.0, 0.2, 1),
+    border-radius 240ms cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+.cam-shutter--video .cam-shutter-inner {
+  background: oklch(58% 0.22 22);
+}
+.cam-shutter--recording .cam-shutter-inner {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+/* Live feed crossfade. The stream genuinely tears down + restarts when the
+   user flips modes (different resolution / audio); a brief fade hides the
+   black-frame stutter so the swap reads as soft, not glitchy. */
+.cam-video {
+  transition: opacity 220ms cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+.cam-video.cam-video--not-ready {
+  opacity: 0;
+}
+/* During review the frozen capture sits on top — keep the live stream running
+   underneath (do NOT pause or disable the track; iOS Safari won't recover). */
+.cam-video.cam-video--behind-review {
+  visibility: hidden;
+}
+.cam-video.cam-video--mirror,
+.cam-preview.cam-preview--mirror {
+  transform: scaleX(-1);
+}
+
+/* Top-center recording badge — red blinking dot + mm:ss timer. */
+.cam-rec-badge {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 18px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.cam-rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: oklch(58% 0.22 22);
+  animation: cam-rec-blink 1.1s ease-in-out infinite;
+}
+@keyframes cam-rec-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cam-rec-dot { animation: none; }
+  .cam-shutter--recording .cam-shutter-inner { transition: none; }
+}
+
+.cam-icon-btn:disabled { opacity: 0.4; cursor: default; }
+.cam-icon-btn:disabled:hover { background: rgba(0, 0, 0, 0.45); }
+
+/* Lightbox video reuses the same fit rules as the lightbox photo. */
+.lb-video {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  background: #000;
+  display: block;
+}

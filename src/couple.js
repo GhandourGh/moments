@@ -3,6 +3,9 @@ export const COUPLE = {
   initials: "R & M",
   names: "Rawad & Maya",
   date: "12 . 06 . 2026",
+  /** Machine-parseable event date — combined with SCHEDULE.time to compute
+   *  the "now" indicator on the Tonight schedule. */
+  dateISO: "2026-12-06",
   hashtag: "#RawadAndMaya",
 };
 
@@ -49,20 +52,20 @@ export const STORY = [
     body: "A friend's birthday at a little place off Mar Mikhael. Rawad was DJing for free drinks and Maya was the only one who asked what he was actually playing. We have been arguing about music ever since.",
     pull: "We have been arguing about music ever since.",
     image: "/seed/seed-01.jpg",
-    alt: "A candlelit evening, the night Rawad and Maya first met.",
+    alt: "Guests celebrating at an evening wedding reception.",
   },
   {
     title: "Why this venue",
     body: "Villa des Oliviers belonged to Maya's grandparents. We spent our first weekend together here, walked the olive grove at dawn, and never quite left. Tonight feels like coming home.",
     pull: "Tonight feels like coming home.",
-    image: "/seed/seed-04.jpg",
-    alt: "The olive grove at Villa des Oliviers at dawn.",
+    image: "/seed/seed-03.jpg",
+    alt: "An elegant wedding venue surrounded by greenery.",
   },
   {
     title: "The hashtag",
     body: "Tag your shots — or skip the tag and just take a photo here. Every frame guests capture inside the app lands automatically in the shared gallery. We will keep them forever.",
     pull: "Every frame lands in the shared gallery, automatically.",
-    image: "/seed/seed-07.jpg",
+    image: "/seed/seed-06.jpg",
     alt: "Guests with cameras during a wedding reception.",
   },
 ];

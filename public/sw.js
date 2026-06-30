@@ -7,7 +7,7 @@
  *
  * Cache name is versioned so bumping the constant invalidates old assets.
  */
-const VERSION = "fg-v4";
+const VERSION = "fg-v5";
 const SHELL = ["/", "/hero.jpg", "/logo.svg", "/manifest.webmanifest", "/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {

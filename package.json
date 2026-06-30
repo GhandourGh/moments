@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs",
-    "compress-hero": "node scripts/compress-hero.mjs"
+    "compress-hero": "node scripts/compress-hero.mjs",
+    "compress-seed": "node scripts/compress-seed.mjs"
   },
   "dependencies": {
     "@use-gesture/react": "^10.3.1",

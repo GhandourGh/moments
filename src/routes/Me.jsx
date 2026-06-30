@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import BackLink from "../components/BackLink.jsx";
-import CameraView from "../components/CameraView.jsx";
+import CameraView from "../camera/CameraView.jsx";
 import PhotoGrid from "../components/PhotoGrid.jsx";
 import Lightbox from "../components/Lightbox.jsx";
 import { usePhotos } from "../state/PhotosContext.jsx";
+import { hasBackend, matchSelfie } from "../lib/api.js";
+import EmptyState from "../components/EmptyState.jsx";
 
 /**
  * "Find photos I'm in." The selfie matcher is mocked — it returns a
@@ -14,18 +16,30 @@ export default function Me() {
   const { shots } = usePhotos();
   const [selfieOpen, setSelfieOpen] = useState(false);
   const [selfie, setSelfie] = useState(null); // { url } from last capture
+  const [matchIds, setMatchIds] = useState(null); // null = mock fallback
   const [matchOpenIndex, setMatchOpenIndex] = useState(null);
   const [mineOpenIndex, setMineOpenIndex] = useState(null);
 
   const mine = shots.filter((s) => !s.seed); // anything the guest captured
-  // Mocked match: a deterministic 1-in-3 slice of the seed gallery, so it
-  // looks like "we found you" without doing any face matching.
-  const matches = selfie ? shots.filter((_, i) => i % 3 === 0).slice(0, 6) : [];
+  // Real match if the backend gave us ids; otherwise a deterministic 1-in-3
+  // slice of the seed gallery so the UI still feels alive in dev / offline.
+  const matches = selfie
+    ? matchIds
+      ? shots.filter((s) => matchIds.includes(s.serverId ?? s.id))
+      : shots.filter((_, i) => i % 3 === 0).slice(0, 6)
+    : [];
 
-  function onCapture(blob) {
+  async function onCapture(blob) {
     if (selfie?.url) URL.revokeObjectURL(selfie.url);
     setSelfie({ url: URL.createObjectURL(blob) });
     setSelfieOpen(false);
+    setMatchIds(null);
+    if (hasBackend()) {
+      try {
+        const res = await matchSelfie(blob);
+        if (res.ok) setMatchIds(res.matches || []);
+      } catch { /* keep the mock fallback */ }
+    }
   }
 
   useEffect(() => () => {
@@ -36,7 +50,6 @@ export default function Me() {
     <section className="page-section">
       <BackLink />
       <header className="section-head">
-        <p className="section-eyebrow">Photos of you</p>
         <h1 className="section-title">Find every shot you're in</h1>
         <p className="section-lede">
           Take one quick selfie and we'll surface the photos from tonight
@@ -88,9 +101,11 @@ export default function Me() {
             Photos with you <span className="me-block-count">{matches.length}</span>
           </h2>
           {matches.length === 0 ? (
-            <div className="placeholder">
-              <p>No matches yet. Try a clearer, well-lit selfie.</p>
-            </div>
+            <EmptyState
+              illustration="face"
+              headline="We'll start finding you here."
+              subhead="No matches yet — try a clearer, well-lit selfie."
+            />
           ) : (
             <PhotoGrid shots={matches} onOpen={setMatchOpenIndex} />
           )}
@@ -111,9 +126,11 @@ export default function Me() {
           Your captures tonight <span className="me-block-count">{mine.length}</span>
         </h2>
         {mine.length === 0 ? (
-          <div className="placeholder">
-            <p>Photos you take with the camera button show up here.</p>
-          </div>
+          <EmptyState
+            illustration="camera"
+            headline="Nothing of yours yet."
+            subhead="Photos you take with the camera button show up here."
+          />
         ) : (
           <PhotoGrid shots={mine} onOpen={setMineOpenIndex} />
         )}
@@ -130,8 +147,8 @@ export default function Me() {
       {selfieOpen && (
         <CameraView
           defaultFacing="user"
-          showSessionStack={false}
           closeOnCapture
+          allowVideo={false}
           onCapture={onCapture}
           onClose={() => setSelfieOpen(false)}
         />

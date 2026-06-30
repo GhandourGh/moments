@@ -5,9 +5,9 @@ import React from "react";
  * the active value and the photo-filtering logic.
  */
 const OPTIONS = [
-  { id: "all",   label: "All" },
-  { id: "yours", label: "Yours" },
-  { id: "hour",  label: "Last hour" },
+  { id: "all",    label: "All" },
+  { id: "photos", label: "Photos" },
+  { id: "videos", label: "Videos" },
 ];
 
 export default function GalleryFilters({ value, onChange }) {

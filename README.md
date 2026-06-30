@@ -15,12 +15,16 @@ Vite prints **Local** and **Network** URLs with **https://** (required for the c
 
 1. Start the dev server: `npm run dev`
 2. Connect your phone to the **same Wi‑Fi** as your Mac
-3. On your phone, open the **Network** URL — it must start with **`https://`**, not `http://`
+3. On your phone, open the **Network** URL (or the `📱 Phone` line Vite prints) — it must start with **`https://`**, not `http://`
 4. Your browser will warn about the certificate (self-signed). Continue / trust it:
    - **iPhone (Safari):** tap **Show Details** → **visit this website** → **Visit Website**
    - **Android (Chrome):** **Advanced** → **Proceed**
 
-If the page doesn’t load, allow incoming connections if macOS asks about the firewall, and turn off VPN on either device.
+If the page doesn’t load:
+
+- Use the **exact** URL from the terminal (your Mac’s IP can change between Wi‑Fi networks).
+- Only one dev server should run on port **5174** — stop extra `npm run dev` tabs if Vite says the port is busy.
+- Allow incoming connections if macOS asks about the firewall, and turn off VPN on either device.
 
 ### Camera on a real phone
 

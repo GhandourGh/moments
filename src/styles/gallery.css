@@ -1,0 +1,189 @@
+/* --------------------- Photo grid (Gallery) ---------------------
+   Square tiles with status dot, glassy timestamp pill (also reused
+   by the recent strip), and the filter chip row above the grid. */
+
+.gs + .gs { margin-top: 28px; }
+
+/* Hydrate skeleton — neutral tiles holding layout until IDB merges in. */
+.gs-skel-tile {
+  cursor: default;
+  background: linear-gradient(
+    100deg,
+    var(--paper-2) 0%,
+    oklch(94% 0 0) 50%,
+    var(--paper-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: gs-skel-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes gs-skel-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gs-skel-tile { animation: none; background: var(--paper-2); }
+}
+
+.gs-label {
+  margin-bottom: 10px;
+}
+.gs-label-pulse {
+  color: var(--brand-deep);
+  animation: gs-label-pulse 1.5s var(--ease-out);
+}
+@keyframes gs-label-pulse {
+  0%   { color: var(--brand); }
+  60%  { color: var(--brand-deep); }
+  100% { color: var(--ink-mute); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gs-label-pulse { animation: none; color: var(--brand-deep); }
+}
+
+
+.ph-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 4px;
+}
+.ph-tile {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: var(--paper-2);
+  aspect-ratio: 1;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: 8px;
+  box-shadow: var(--shadow-border);
+  transition:
+    transform var(--dur-ui) var(--ease-out),
+    filter var(--dur-ui) var(--ease-out),
+    box-shadow var(--dur-ui) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ph-tile:hover {
+    filter: brightness(1.04);
+    box-shadow: var(--shadow-border-hover);
+  }
+}
+.ph-tile:active { transform: scale(0.96); }
+.ph-tile img,
+.ph-tile video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+
+/* Video tile play indicator — a soft glass chip in the bottom-left so the
+   guest can tell at a glance which tiles are videos. */
+.ph-tile-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.ph-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+.ph-dot-pending {
+  background: oklch(80% 0.16 80);
+  animation: ph-dot-pulse 1.4s ease-in-out infinite;
+}
+.ph-dot-failed {
+  background: oklch(58% 0.18 22);
+  cursor: pointer;
+}
+@keyframes ph-dot-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ph-dot-pending { animation: none; opacity: 0.85; }
+}
+
+/* Glassy timestamp pill — overlaid on any photo tile or strip card.
+   Bottom-centered with a slightly more opaque background. */
+.time-badge {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px 4px 8px;
+  border-radius: 999px;
+  background: rgba(20, 18, 14, 0.32);
+  color: rgba(255, 255, 255, 0.98);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 6px 18px rgba(0, 0, 0, 0.30);
+  pointer-events: none; /* don't steal clicks from the tile */
+}
+.time-badge svg { opacity: 0.9; }
+
+@media (max-width: 640px) {
+  .time-badge { font-size: 10px; padding: 3px 8px; bottom: 6px; }
+  .ph-grid { grid-template-columns: repeat(3, 1fr); gap: 3px; }
+}
+
+/* ------------------------ Gallery filter chips ------------------- */
+
+.gf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+}
+.gf-chip {
+  position: relative;
+  padding: 6px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 999px;
+  transition:
+    color var(--dur-ui) var(--ease-out),
+    background var(--dur-ui) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .gf-chip:hover { color: var(--ink); background: rgba(28, 26, 23, 0.04); }
+}
+.gf-chip:active { transform: scale(0.96); }
+.gf-chip-active { color: var(--ink); }
+.gf-chip-active::after {
+  content: "";
+  position: absolute;
+  left: 14px; right: 14px;
+  bottom: 2px;
+  height: 1px;
+  background: var(--brand);
+}

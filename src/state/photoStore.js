@@ -2,7 +2,9 @@
  * Tiny IndexedDB wrapper for persisting captured photos across page reloads.
  * Zero deps; uses the raw IndexedDB API.
  *
- * Records:  { id: string, blob: Blob, takenAt: number }
+ * Records:  { id, blob, takenAt, status?, serverId?, serverUrl?, attempts? }
+ *   status: "local" | "pending" | "synced" | "failed"
+ *   Records without `status` were written by an earlier build — treat as "local".
  * Object store keyPath: "id"
  */
 

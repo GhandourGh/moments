@@ -69,6 +69,45 @@ export default function AddToHomeScreen({ variant = "card", className = "" }) {
 
   const bandClass = isCard ? "section-band section-band--alt" : "";
 
+  const body = (
+    <>
+      {!isCompact && (
+        <div className="a2hs-copy">
+          {isCard && (
+            <img
+              src="/icons/icon-180.png"
+              alt=""
+              className="a2hs-app-icon"
+              width={44}
+              height={44}
+            />
+          )}
+          <div className="a2hs-text">
+            <h2 className="a2hs-title">
+              {iosNeedsSafari ? "Install via Safari" : "Add to Home Screen"}
+            </h2>
+            <p className="a2hs-sub">{subtitle}</p>
+            {iosNeedsSafari && (
+              <p className="a2hs-hint">Chrome on iPhone can't install apps directly.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className={`a2hs-actions ${isCompact ? "a2hs-actions-compact" : ""}`}>
+        <button
+          type="button"
+          className={`a2hs-btn ${isCompact ? "a2hs-btn-compact" : ""}`}
+          onClick={handleInstall}
+          disabled={busy}
+        >
+          <HomeIcon />
+          <span>{buttonLabel}</span>
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <>
       <motion.section
@@ -79,40 +118,7 @@ export default function AddToHomeScreen({ variant = "card", className = "" }) {
         transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
         aria-label="Add to Home Screen"
       >
-        {!isCompact && (
-          <div className="a2hs-copy">
-            {isCard && (
-              <img
-                src="/icons/icon-180.png"
-                alt=""
-                className="a2hs-app-icon"
-                width={44}
-                height={44}
-              />
-            )}
-            <div className="a2hs-text">
-              <h2 className="a2hs-title">
-                {iosNeedsSafari ? "Install via Safari" : "Add to Home Screen"}
-              </h2>
-              <p className="a2hs-sub">{subtitle}</p>
-              {iosNeedsSafari && (
-                <p className="a2hs-hint">Chrome on iPhone can't install apps directly.</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className={`a2hs-actions ${isCompact ? "a2hs-actions-compact" : ""}`}>
-          <button
-            type="button"
-            className={`a2hs-btn ${isCompact ? "a2hs-btn-compact" : ""}`}
-            onClick={handleInstall}
-            disabled={busy}
-          >
-            <HomeIcon />
-            <span>{buttonLabel}</span>
-          </button>
-        </div>
+        {isCard ? <div className="section-inner a2hs-inner">{body}</div> : body}
       </motion.section>
 
       <InstallGuideModal
