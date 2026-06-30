@@ -7,8 +7,12 @@
  *
  * Cache name is versioned so bumping the constant invalidates old assets.
  */
-const VERSION = "fg-v5";
-const SHELL = ["/", "/hero.jpg", "/logo.svg", "/manifest.webmanifest", "/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png"];
+const VERSION = "fg-v6";
+const SHELL = ["/", "/logo.svg", "/manifest.webmanifest", "/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png"];
+
+function isPhotoAsset(pathname) {
+  return /^\/(hero\.jpg|seed\/)/.test(pathname);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -44,7 +48,25 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for static assets (JS/CSS/images/fonts).
+  const pathname = new URL(req.url).pathname;
+
+  // Network-first for gallery/hero photos so deploys show new images immediately.
+  if (isPhotoAsset(pathname)) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.status === 200 && res.type === "basic") {
+            const copy = res.clone();
+            caches.open(VERSION).then((c) => c.put(req, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Cache-first for JS/CSS/fonts/icons.
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;

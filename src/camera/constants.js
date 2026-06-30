@@ -30,3 +30,7 @@ export const BURST_INTERVAL_MS = RETINA_TOTAL_MS + 50;
 
 export const MODE_SWITCH_DEBOUNCE_MS = 500;
 export const FOCUS_RING_MS = 500;
+
+export const TORCH_FLASH_MS = 80;
+export const ZOOM_HUD_MS = 900;
+export const ZOOM_APPLY_DEBOUNCE_MS = 50;

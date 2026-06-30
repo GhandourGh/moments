@@ -1,12 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useFocusTrap } from "../hooks/useFocusTrap.js";
-import { getActiveCameraBackendId } from "./adapters/createCameraAdapter.js";
-import { fileToDownscaledBlob } from "./utils/imageCapture.js";
-import { useCameraStream } from "./hooks/useCameraStream.js";
-import { useCameraZoom } from "./hooks/useCameraZoom.js";
-import { useCameraCapture, resumeLivePreview } from "./hooks/useCameraCapture.js";
-import { useCameraRecording } from "./hooks/useCameraRecording.js";
+import { downscaleImageFile } from "./capture.js";
+import { useCamera } from "./useCamera.js";
 
 function formatElapsed(ms) {
   const total = Math.floor(ms / 1000);
@@ -31,9 +27,6 @@ function isVolumeShutterKey(e) {
   );
 }
 
-/**
- * In-app camera. Keep adds to the gallery; camera stays open for more shots.
- */
 export default function CameraView({
   onCapture,
   onClose,
@@ -47,94 +40,48 @@ export default function CameraView({
   const rootRef = useRef(null);
   const fileRef = useRef(null);
   const snapRef = useRef(() => {});
-  const cameraBackendId = getActiveCameraBackendId();
 
   const [facing, setFacing] = useState(defaultFacing);
   const [mode, setMode] = useState("photo");
   const [permissionGate, setPermissionGate] = useState(true);
-  const [torchOn, setTorchOn] = useState(false);
 
   useFocusTrap(rootRef, true);
-
   const isSelfie = facing === "user";
 
-  const { streamRef, ready, error, setError, torchSupported, nativeZoom, adapter } =
-    useCameraStream({ facing, mode, videoRef, permissionGate });
-
   const {
+    ready,
+    error,
+    setError,
+    zoom,
+    setZoom,
+    resetZoom,
+    visibleZoomList,
+    hasHardwareZoom,
+    bindPinch,
+    zoomHudVisible,
+    torchSupported,
+    torchOn,
+    toggleTorch,
     flashMode,
-    retinaFlashPlaying,
+    cycleFlash,
     focusPoint,
+    focusAt,
+    retinaFlashOn,
     capturing,
+    snap,
     pending,
     setPending,
-    snap,
-    focusAt,
-    cycleSelfieFlash,
     retake,
-    capturingRef,
-  } = useCameraCapture({
-    videoRef,
-    streamRef,
-    adapter,
-    isSelfie,
-    ready,
-  });
-
-  const {
     recording,
     recordElapsed,
     ringLightOn,
     startRecording,
     stopRecording,
     abortRecording,
-  } = useCameraRecording({
-    streamRef,
-    adapter,
-    isSelfie,
-    torchOn,
-    torchSupported,
-    selfieFlashOn: flashMode === "on",
-    setPending,
-    setError,
-  });
+    resumePreview,
+  } = useCamera({ videoRef, facing, mode, permissionGate, isSelfie });
 
-  const {
-    zoom,
-    setZoom,
-    visibleZoomList,
-    bindPinch,
-    showHud,
-    resetZoom,
-    zoomHudRef,
-  } = useCameraZoom({
-    nativeZoom,
-    streamRef,
-    adapter,
-    ready,
-    hasPending: !!pending,
-    recording,
-  });
-
-  useEffect(() => {
-    setTorchOn(false);
-  }, [facing]);
-
-  useEffect(() => {
-    return () => abortRecording();
-  }, [facing, mode, abortRecording]);
-
-  // Preview torch — continuous light while composing (back camera only).
-  useEffect(() => {
-    if (!ready || !torchSupported || isSelfie) return;
-    let cancelled = false;
-    (async () => {
-      if (cancelled) return;
-      await adapter.setTorch(streamRef.current, torchOn);
-    })();
-    return () => { cancelled = true; };
-  }, [torchOn, torchSupported, isSelfie, ready, streamRef, adapter]);
-
+  // Skip the pre-permission explainer if camera was already granted.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -150,22 +97,22 @@ export default function CameraView({
     return () => { cancelled = true; };
   }, []);
 
+  // Stop any in-flight recording when facing or mode changes.
+  useEffect(() => () => abortRecording(), [facing, mode, abortRecording]);
+
+  // Volume-key shutter + Escape to close.
   useEffect(() => {
     function onKey(e) {
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
+      if (e.key === "Escape") { onClose(); return; }
       if (!isVolumeShutterKey(e)) return;
-      if (!ready || pending || error || mode !== "photo" || recording || capturingRef.current) return;
+      if (!ready || pending || error || mode !== "photo" || recording || capturing) return;
       e.preventDefault();
       e.stopPropagation();
       snapRef.current();
     }
     window.addEventListener("keydown", onKey, { capture: true });
     return () => window.removeEventListener("keydown", onKey, { capture: true });
-  }, [ready, pending, error, mode, recording, onClose, capturingRef]);
-
+  }, [ready, pending, error, mode, recording, capturing, onClose]);
   snapRef.current = snap;
 
   function flipCamera() {
@@ -173,19 +120,13 @@ export default function CameraView({
     setFacing((f) => (f === "environment" ? "user" : "environment"));
   }
 
-  function toggleTorch() {
-    setTorchOn((on) => !on);
-  }
-
   function keep() {
     if (!pending) return;
     const mediaType = pending.mediaType || "photo";
     const added = onCapture(pending.blob, { mediaType });
-    if (!added || added.url !== pending.url) {
-      URL.revokeObjectURL(pending.url);
-    }
+    if (!added || added.url !== pending.url) URL.revokeObjectURL(pending.url);
     setPending(null);
-    resumeLivePreview(videoRef);
+    resumePreview();
     if (closeOnCapture) onClose();
   }
 
@@ -198,9 +139,8 @@ export default function CameraView({
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
     if (pending?.url) URL.revokeObjectURL(pending.url);
-    const blob = await fileToDownscaledBlob(file);
-    const url = URL.createObjectURL(blob);
-    setPending({ blob, url });
+    const blob = await downscaleImageFile(file);
+    setPending({ blob, url: URL.createObjectURL(blob) });
     setError("");
     setPermissionGate(false);
   }
@@ -230,7 +170,6 @@ export default function CameraView({
       role="dialog"
       aria-modal="true"
       aria-label="Camera"
-      data-camera-backend={cameraBackendId}
       ref={rootRef}
       {...bindPinch()}
       style={{ touchAction: "none" }}
@@ -262,9 +201,10 @@ export default function CameraView({
         autoPlay
         onClick={(e) => !pending && focusAt(e.clientX, e.clientY)}
       />
+
       {isSelfie && (
         <div
-          className={`cam-screen-flash${retinaFlashPlaying ? " cam-screen-flash--active" : ""}`}
+          className={`cam-screen-flash${retinaFlashOn ? " cam-screen-flash--active" : ""}`}
           aria-hidden
         />
       )}
@@ -284,11 +224,18 @@ export default function CameraView({
         />
       )}
       <div
-        ref={zoomHudRef}
-        className={`cam-zoom-hud tabular-nums${showHud ? "" : " cam-zoom-hud--hidden"}`}
+        className={
+          `cam-zoom-hud tabular-nums${zoomHudVisible && hasHardwareZoom && !pending && !recording ? "" : " cam-zoom-hud--hidden"}`
+        }
         aria-live="polite"
         aria-atomic="true"
-      />
+      >
+        {(() => {
+          const v = Math.round(zoom * 10) / 10;
+          return Number.isInteger(v) ? `${v}×` : `${v.toFixed(1)}×`;
+        })()}
+      </div>
+
       {pending && pending.mediaType === "video" ? (
         <video
           className="cam-preview"
@@ -300,9 +247,7 @@ export default function CameraView({
         />
       ) : pending ? (
         <img
-          className={
-            "cam-preview" + (isSelfie ? " cam-preview--mirror" : "")
-          }
+          className={"cam-preview" + (isSelfie ? " cam-preview--mirror" : "")}
           src={pending.url}
           alt="Captured photo"
         />
@@ -329,7 +274,7 @@ export default function CameraView({
             <button
               type="button"
               className={`cam-icon-btn cam-flash-btn cam-flash-btn--${flashMode}`}
-              onClick={cycleSelfieFlash}
+              onClick={cycleFlash}
               aria-label={`Flash ${flashMode}`}
               title={`Flash: ${flashMode}`}
             >
@@ -337,15 +282,26 @@ export default function CameraView({
             </button>
           )}
           {!pending && !error && !permissionGate && torchSupported && !isSelfie && !recording && (
-            <button
-              type="button"
-              className={`cam-icon-btn cam-torch-btn${torchOn ? " cam-torch-btn--on" : ""}`}
-              onClick={toggleTorch}
-              aria-label={torchOn ? "Turn torch off" : "Turn torch on"}
-              title={torchOn ? "Torch on" : "Torch off"}
-            >
-              <TorchGlyph on={torchOn} />
-            </button>
+            <>
+              <button
+                type="button"
+                className={`cam-icon-btn cam-torch-btn${torchOn ? " cam-torch-btn--on" : ""}`}
+                onClick={toggleTorch}
+                aria-label={torchOn ? "Turn torch off" : "Turn torch on"}
+                title={torchOn ? "Torch on" : "Torch off"}
+              >
+                <TorchGlyph on={torchOn} />
+              </button>
+              <button
+                type="button"
+                className={`cam-icon-btn cam-flash-btn cam-flash-btn--${flashMode}`}
+                onClick={cycleFlash}
+                aria-label={`Flash ${flashMode}`}
+                title={`Flash: ${flashMode}`}
+              >
+                <FlashGlyph mode={flashMode} />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -456,10 +412,7 @@ export default function CameraView({
                     aria-selected={mode === "photo"}
                     className={`cam-mode-opt${mode === "photo" ? " cam-mode-opt--on" : ""}`}
                     onClick={() => {
-                      if (mode !== "photo") {
-                        setError("");
-                        setMode("photo");
-                      }
+                      if (mode !== "photo") { setError(""); setMode("photo"); }
                     }}
                   >
                     Photo
@@ -470,10 +423,7 @@ export default function CameraView({
                     aria-selected={mode === "video"}
                     className={`cam-mode-opt${mode === "video" ? " cam-mode-opt--on" : ""}`}
                     onClick={() => {
-                      if (mode !== "video") {
-                        setError("");
-                        setMode("video");
-                      }
+                      if (mode !== "video") { setError(""); setMode("video"); }
                     }}
                   >
                     Video
