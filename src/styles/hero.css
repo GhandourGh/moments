@@ -1,0 +1,227 @@
+/* ------------------------------ Hero ------------------------------ */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  min-height: calc(100vh - 52px);
+  display: grid;
+  /* Anchor content to the top so the text sits just below the navbar
+     instead of being vertically centered in the full-height hero. */
+  place-items: start center;
+  padding: 108px 20px 72px;
+  overflow: hidden;
+}
+
+.hero-media { position: absolute; inset: 0; z-index: -1; }
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background: url("/hero.jpg") center/cover no-repeat;
+}
+/* Darkening overlay so the white serif type keeps contrast over a busy photo,
+   plus a soft fade into the paper page below. */
+.hero-vignette {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at center, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.55) 100%),
+    linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.10) 35%, rgba(28,26,23,0.45) 100%),
+    linear-gradient(180deg, transparent 70%, var(--paper) 100%);
+}
+
+.hero-content {
+  position: relative;
+  max-width: 720px;
+  text-align: center;
+  color: oklch(98% 0 0);
+  --hero-text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.85),
+    0 2px 10px rgba(0, 0, 0, 0.55),
+    0 6px 22px rgba(0, 0, 0, 0.4);
+  --hero-title-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.9),
+    0 4px 18px rgba(0, 0, 0, 0.65),
+    0 10px 36px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+.hero-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: oklch(98% 0 0 / 0.92);
+  margin: 0;
+  font-weight: 500;
+  text-shadow: var(--hero-text-shadow);
+}
+
+.hero-title {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 400;
+  font-size: clamp(48px, 10vw, 108px);
+  line-height: 0.88;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  text-shadow: var(--hero-title-shadow);
+}
+.hero-amp {
+  font-style: italic;
+  font-size: 0.5em;
+  color: oklch(98% 0 0 / 0.95);
+  margin: -0.08em 0;
+  line-height: 1;
+}
+.hero-name { display: block; }
+
+.hero-lede {
+  font-size: 17px;
+  max-width: 36ch;
+  margin: 0;
+  color: oklch(98% 0 0 / 0.96);
+  line-height: 1.45;
+  text-shadow: var(--hero-text-shadow);
+}
+
+.hero-cta { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 4px; }
+.hero-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid rgba(28, 26, 23, 0.10);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 12px 36px rgba(28, 26, 23, 0.30);
+  transition: transform var(--dur-ui) var(--ease-out), box-shadow var(--dur-ui) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cta:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 18px 42px rgba(28, 26, 23, 0.36);
+  }
+}
+.cta:active { transform: scale(0.97); }
+.cta svg { color: var(--brand-deep); }
+
+/* Secondary hero CTA — translucent over the photo, blends with the scene */
+.cta-ghost {
+  background: rgba(255, 255, 255, 0.16);
+  color: oklch(98% 0 0);
+  border: 1px solid oklch(98% 0 0 / 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22);
+}
+.cta-ghost:hover {
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+.cta-ghost svg { color: oklch(98% 0 0); }
+
+.cta-hint {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: oklch(98% 0 0 / 0.92);
+  text-shadow: var(--hero-text-shadow);
+}
+
+/* Subtle nudge that there's more page below. Fades out on first scroll
+   via the route component, so it never competes with content. */
+.hero-scroll-cue {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none; /* mobile-only — desktop hero is obvious */
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: oklch(98% 0 0 / 0.78);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  text-shadow: var(--hero-text-shadow);
+  animation: hero-scroll-cue-float 2.4s var(--ease-in-out) infinite;
+  pointer-events: none;
+}
+.hero-scroll-cue-word { line-height: 1; }
+@media (max-width: 720px) {
+  .hero-scroll-cue { display: flex; }
+}
+@keyframes hero-scroll-cue-float {
+  0%, 100% { transform: translate(-50%, 0); opacity: 0.78; }
+  50%      { transform: translate(-50%, 4px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-scroll-cue { animation: none; }
+}
+
+@media (max-width: 720px) {
+  .hero {
+    min-height: min(82vh, 680px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding:
+      28px 16px
+      calc(env(safe-area-inset-bottom, 0px) + 108px);
+  }
+  .hero-content {
+    gap: 22px;
+    max-width: 100%;
+  }
+  .hero-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+  }
+  .hero-title {
+    font-size: clamp(40px, 11.5vw, 58px);
+    line-height: 0.9;
+  }
+  .hero-amp {
+    font-size: 0.48em;
+    margin: -0.06em 0;
+  }
+  .hero-lede {
+    font-size: 15px;
+    line-height: 1.4;
+    max-width: 32ch;
+  }
+  .hero-cta {
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .cta {
+    padding: 12px 22px;
+    font-size: 13px;
+  }
+  .cta-hint {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+}
