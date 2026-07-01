@@ -24,7 +24,8 @@ Locked so `npm install` and `vercel deploy` don't move under us.
 - **Supabase CLI**: `>=1.180`
 - **Vercel project name**: `moments`
 - **Supabase project name**: `Moments`
-- **Supabase project region**: _pending — pick closest to guests when creating the project_
+- **Supabase project ref**: `ttjkrtvlgcutrhbzdldj`
+- **Supabase project region**: _pending — confirm from the dashboard and record here_
 - **Vercel project region**: `iad1` default (change to closer region if guests are outside US East)
 
 ## Environments
