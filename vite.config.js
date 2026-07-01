@@ -4,6 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** First non-internal IPv4 — used for LAN HTTPS + HMR on phones. */
 function getLanIp() {
@@ -73,6 +76,11 @@ function printMobileUrl() {
 // UI-only — no backend proxy. Photos are kept in component state for now.
 export default defineConfig({
   plugins: [react(), printMobileUrl()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+    },
+  },
   server: {
     port: DEV_PORT,
     strictPort: true,

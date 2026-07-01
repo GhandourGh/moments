@@ -1,8 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { SEED_SHOTS } from "../seed.js";
-import { deleteShot, listShots } from "./photoStore.js";
-import { enqueue, subscribe } from "./uploadQueue.js";
-import { fetchShotsSince, hasBackend } from "../lib/api.js";
+import { SEED_SHOTS } from '@/data/seed.js';
+import { deleteShot, listShots } from '@/services/storage/photoStore.js';
+import { enqueue, subscribe } from '@/services/storage/uploadQueue.js';
+import { fetchShotsSince, hasBackend } from '@/services/api/index.js';
+import { getGuest } from '@/state/guest.js';
 
 const POLL_MS = 10_000;
 
@@ -51,6 +52,9 @@ export function PhotosProvider({ children }) {
               status: r.status ?? "local",
               serverUrl: r.serverUrl,
               mediaType: r.mediaType ?? "photo",
+              guestId: r.guestId,
+              guestFirstName: r.guestFirstName,
+              guestLastName: r.guestLastName,
             };
           });
         setShots((prev) => {
@@ -69,16 +73,30 @@ export function PhotosProvider({ children }) {
   }, []);
 
   const addShot = useCallback((blob, { mediaType = "photo" } = {}) => {
+    // Attribution is required. If the welcome gate somehow let us here without
+    // a guest, refuse the capture — better than orphaning the photo.
+    const guest = getGuest();
+    if (!guest) return null;
+
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const takenAt = Date.now();
     const url = URL.createObjectURL(blob);
     // Backend only accepts photos right now — videos stay local.
     const status = mediaType === "photo" && hasBackend() ? "pending" : "local";
+    const attribution = {
+      guestId: guest.id,
+      guestFirstName: guest.firstName,
+      guestLastName: guest.lastName,
+    };
     trackUrl(url);
-    setShots((prev) => [{ id, url, takenAt, status, mediaType }, ...prev]);
-    enqueue({ id, blob, takenAt, mediaType });
+    setShots((prev) => [{ id, url, takenAt, status, mediaType, ...attribution }, ...prev]);
+    enqueue({ id, blob, takenAt, mediaType, ...attribution });
     return { id, url };
   }, [trackUrl]);
+
+  // NOTE: name edits from /me deliberately do NOT rewrite past attributions.
+  // Snapshot-not-backfill — matches docs/auth.md and docs/privacy.md. If you
+  // ever need to backfill, do it explicitly, not as a side effect of an edit.
 
   // Reflect queue status changes (synced / failed / pending-retry) into UI.
   useEffect(() => {

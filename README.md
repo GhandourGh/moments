@@ -1,63 +1,90 @@
-# moments
+# Moment
 
-Wedding guest app — gallery, camera capture, and event pages.
+Guest-side photo capture + share app. Feature-first React (Vite) codebase, ready
+to plug in a database, hosting, and AI/ML surfaces.
 
-## Development
+## Getting started
 
 ```bash
 npm install
-npm run dev
-```
-
-Vite prints **Local** and **Network** URLs with **https://** (required for the camera on phones).
-
-## Test on your phone (same Wi‑Fi)
-
-1. Start the dev server: `npm run dev`
-2. Connect your phone to the **same Wi‑Fi** as your Mac
-3. On your phone, open the **Network** URL (or the `📱 Phone` line Vite prints) — it must start with **`https://`**, not `http://`
-4. Your browser will warn about the certificate (self-signed). Continue / trust it:
-   - **iPhone (Safari):** tap **Show Details** → **visit this website** → **Visit Website**
-   - **Android (Chrome):** **Advanced** → **Proceed**
-
-If the page doesn’t load:
-
-- Use the **exact** URL from the terminal (your Mac’s IP can change between Wi‑Fi networks).
-- Only one dev server should run on port **5174** — stop extra `npm run dev` tabs if Vite says the port is busy.
-- Allow incoming connections if macOS asks about the firewall, and turn off VPN on either device.
-
-### Camera on a real phone
-
-Browsers block the camera on plain **`http://192.168.x.x`**. The dev server uses **HTTPS** so the camera works over your local IP after you accept the certificate warning.
-
-If the camera still fails (permission denied, etc.), use **Choose from library** in the camera screen to pick a photo instead.
-
-### Alternative: ngrok
-
-If HTTPS on LAN is awkward, use a public HTTPS tunnel:
-
-```bash
-npm run dev
-ngrok http 5174
-```
-
-Open the `https://….ngrok.io` link on your phone.
-
-## Build
-
-```bash
-npm run icons    # generate PWA PNG icons (required before first deploy)
+cp .env.example .env.local   # fill in the values you want to wire up
+npm run dev                  # https://<lan-ip>:5174/ — camera needs HTTPS on phones
 npm run build
-npm run preview   # https on port 5174, also reachable on LAN
 ```
 
-The service worker only registers in production builds. To test install behavior locally, run `npm run build && npm run preview` — not `npm run dev`.
+## Project layout
 
-### PWA install testing
+```
+src/
+├── app/              Bootstrap only. main.jsx, App.jsx, router entry.
+├── features/         One folder per user-facing feature. Owns its own
+│                     components, routes, and hooks. No cross-feature imports.
+│   ├── camera/       Live camera, capture, flash, zoom, recording.
+│   ├── gallery/      Grid, filters, lightbox, sections.
+│   ├── story/        Story route + copy.
+│   ├── tonight/      Landing route + captured strip, memory card, night table.
+│   ├── me/           Selfie-based "find my photos" flow.
+│   ├── welcome/      Welcome modal, Add-to-home, install guide.
+│   └── not-found/    404 route.
+├── components/
+│   ├── layout/       App shell: Navbar, Fab, BottomTabBar, ErrorBoundary…
+│   └── ui/           Reusable primitives: Toast, EmptyState, TimeBadge…
+├── hooks/            Cross-feature React hooks.
+├── services/
+│   ├── api/          HTTP client for the photo backend.
+│   ├── db/           Database adapter (Supabase / Neon / …). Provider-agnostic.
+│   ├── ai/           AI/ML adapter (face match, caption, moderation).
+│   ├── storage/      IndexedDB photo store + background upload queue.
+│   └── sounds.js     Capture/record audio cues.
+├── state/            Global React contexts (photos).
+├── config/           env reader, couple config, memory-card template.
+├── lib/              Tiny leaf utilities that don't fit elsewhere.
+├── data/             Seed data.
+└── styles/           Global + per-feature CSS.
+```
 
-| Platform | Behavior |
-|----------|----------|
-| **Android (Chrome)** | `beforeinstallprompt` enables a one-tap **Install** button in the Add to Home Screen card |
-| **iPhone (Safari)** | No install API — guests follow manual steps (Share → Add to Home Screen). Chrome on iOS shows an **Open in Safari** flow with copy-link |
+Imports use the `@/` alias — e.g. `import Layout from "@/components/layout/Layout.jsx"`.
+Never reach across features; if two features need the same thing, promote it
+into `components/`, `hooks/`, `services/`, or `config/`.
 
-Run `npm run icons` before deploying so `manifest.webmanifest` references valid PNG icons (192×192 and 512×512).
+## Wiring the moving parts
+
+### Database (`services/db`)
+
+`services/db/index.js` exposes `getDb()` returning a driver that matches a small
+contract (`getEvent`, `listGuests`, `recordCapture`, `listCaptures`). Set
+`VITE_DB_PROVIDER` in `.env.local` to pick the driver. Drop new drivers in
+`services/db/drivers/` and add the switch arm — nothing else in the app should
+know which database is behind it.
+
+The in-app photo pipeline (IndexedDB + upload queue) stays in
+`services/storage`; `db` is for durable, cross-device data — events, guests,
+albums, comments.
+
+### Hosting
+
+`vercel.json` is committed. `npm run build` outputs to `dist/`. Deploy:
+
+- **Vercel** — `vercel` from repo root, or connect the GitHub repo.
+- **Capacitor** — `capacitor.config.example.ts` shows the mobile shell config.
+- **Any static host** — serve `dist/` behind HTTPS (camera requires it).
+
+Environment variables live only in `.env.local` (git-ignored) or the host's
+env panel. Rotate them there, not in the repo.
+
+### AI / ML (`services/ai`)
+
+`services/ai/index.js` mirrors the db pattern: `getAi()` returns a driver with
+`faceMatch`, `captionPhoto`, `moderatePhoto`. The client always talks to a
+gateway (`VITE_AI_GATEWAY_URL`) so provider keys never ship in the bundle.
+
+Feature-flag AI surfaces with the helpers in `config/env.js`
+(e.g. `env.ai.faceMatchEnabled`). Off by default.
+
+## Development notes
+
+- Camera requires HTTPS on mobile. Dev server auto-generates a LAN cert on
+  first run and prints the phone URL.
+- HMR runs over `wss://` on the LAN IP.
+- Every relative import goes through the `@/` alias — moving a file is a
+  find-and-replace in one place.

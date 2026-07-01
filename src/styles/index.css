@@ -1,0 +1,430 @@
+@import "./navbar.css";
+@import "./hero.css";
+@import "./tonight.css";
+@import "./gallery.css";
+@import "./camera.css";
+@import "./lightbox.css";
+@import "./toast.css";
+@import "./chrome.css";
+@import "./story.css";
+@import "./me.css";
+@import "./modals.css";
+
+/* ------------------------------------------------------------------
+   Editorial wedding palette. Off-white paper at chroma 0 (not warm-
+   tinted), deep oxblood as the single committed brand anchor. Warmth
+   lives in accent + photography, not the body bg.
+------------------------------------------------------------------- */
+
+:root {
+  /* Surfaces — true off-white, chroma 0; a half-step deeper for bands */
+  --paper: oklch(98.5% 0 0);
+  --paper-2: oklch(96% 0 0);
+
+  /* Ink ramp */
+  --ink: oklch(20% 0.01 25);
+  --ink-soft: oklch(36% 0.012 25);
+  --ink-mute: oklch(48% 0.012 25); /* darkened from 55% → ≥4.5:1 on --paper-2 in dim light */
+  --line: oklch(20% 0.01 25 / 0.12);
+  --line-strong: oklch(20% 0.01 25 / 0.22);
+
+  /* Brand — deep oxblood, the one committed accent */
+  --brand: oklch(38% 0.12 22);
+  --brand-deep: oklch(30% 0.10 22);
+  --brand-soft: oklch(58% 0.13 22);
+  --brand-tint-soft: oklch(38% 0.12 22 / 0.10);
+  --brand-tint: oklch(38% 0.12 22 / 0.30);
+  --brand-tint-strong: oklch(38% 0.12 22 / 0.45);
+  --brand-glow: oklch(58% 0.13 22 / 0.45); /* pulse-shadow base */
+
+  /* Raised paper for keepsake card backings & ATH gradient */
+  --surface-raised: oklch(99% 0 0);
+  --surface-paper-grad: linear-gradient(180deg, var(--surface-raised) 0%, var(--paper-2) 100%);
+
+  /* Layered depth — shadows over borders for elevated surfaces */
+  --shadow-border:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 1px 2px -1px rgba(0, 0, 0, 0.06),
+    0 2px 4px 0 rgba(0, 0, 0, 0.04);
+  --shadow-border-hover:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 1px 2px -1px rgba(0, 0, 0, 0.08),
+    0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  --shadow-lift:
+    0 10px 28px rgba(28, 26, 23, 0.12),
+    0 2px 6px rgba(28, 26, 23, 0.06);
+
+  /* Motion — product register, ease-out first */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-fast: 140ms;
+  --dur-ui: 200ms;
+  --dur-modal: 280ms;
+
+  /* Z-index scale */
+  --z-nav: 30;
+  --z-fab: 40;
+  --z-tabbar: 50;
+  --z-toast: 90;
+  --z-modal: 110;
+
+  /* Shell chrome heights — hero fills the visible fold on mobile */
+  --shell-nav: 52px;
+  --shell-tabbar: calc(env(safe-area-inset-bottom, 0px) + 72px);
+}
+
+/* Section rhythm — shared band dividers (Tonight page) */
+.section-band {
+  width: 100%;
+  border-top: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.section-band--cream { background: var(--paper); }
+.section-band--alt { background: var(--paper-2); }
+.section-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Shared serif display titles */
+.display-title {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: smooth;
+}
+
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Source Sans 3", system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Visible focus rings only when keyboard-focused — calm by default,
+   accessible on demand. */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.btn:focus-visible,
+.cta:focus-visible,
+.app-footer-link:focus-visible,
+.lb-close:focus-visible,
+.lb-nav:focus-visible,
+.lb-download:focus-visible,
+.app-footer-icon:focus-visible,
+.a2hs-btn:focus-visible,
+.a2hs-guide-copy:focus-visible,
+.a2hs-guide-done:focus-visible,
+.cam-icon-btn:focus-visible,
+.cam-shutter:focus-visible,
+.cam-review-btn:focus-visible,
+.fab:focus-visible,
+.tabbar-capture:focus-visible {
+  outline-offset: 4px;
+}
+
+#root { min-height: 100vh; }
+
+img { max-width: 100%; display: block; }
+img:not(.cam-video):not(.cam-preview):not(.lb-slide) {
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; cursor: pointer; }
+
+h1, h2, h3, .hero-title, .tn-title, .section-title, .wm-title {
+  text-wrap: balance;
+}
+
+p,
+li,
+.hero-lede,
+.a2hs-sub,
+.a2hs-hint,
+.empty-state-sub,
+.nf-body,
+.cta-hint,
+.section-desc,
+.wm-body,
+.tl-detail,
+.app-footer-note {
+  text-wrap: pretty;
+}
+
+.tabular-nums,
+.cta-hint,
+.strip-count,
+.gs-label-count,
+.lb-counter,
+.cam-rec-timer {
+  font-variant-numeric: tabular-nums;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------ Offline banner ------------------------ */
+.offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  padding: 8px 16px;
+  background: var(--brand);
+  color: oklch(98% 0 0);
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
+/* ------------------------ Error boundary ------------------------ */
+.err-boundary {
+  max-width: 480px;
+  margin: 80px auto;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.err-title {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  font-size: clamp(28px, 5vw, 40px);
+  color: var(--ink);
+}
+.err-body {
+  color: var(--ink-soft);
+  max-width: 38ch;
+  line-height: 1.5;
+}
+
+/* ---------------------------- Outlet ----------------------------- */
+
+.outlet {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  /* Leave room above the mobile tab bar / safe area so content isn't covered */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+}
+
+/* ----------------------- Section scaffolds ----------------------- */
+
+.page-section {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  width: 100%;
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  margin-bottom: 16px;
+  margin-left: -8px; /* visually align icon with section content */
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: color 0.15s, background 0.15s, transform 0.15s;
+}
+.back-link:hover {
+  color: var(--ink);
+  background: rgba(28, 26, 23, 0.05);
+}
+.back-link:active { transform: translateX(-1px); }
+.back-link svg { display: block; }
+
+.section-head {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+  max-width: 720px;
+}
+.section-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 8px;
+}
+.section-title {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  color: var(--ink);
+  font-size: clamp(34px, 6vw, 56px);
+  letter-spacing: -0.015em;
+  line-height: 1.05;
+  margin-bottom: 10px;
+}
+.section-lede {
+  font-size: 17px;
+  color: var(--ink-soft);
+  max-width: 52ch;
+  line-height: 1.55;
+}
+
+/* Intentional empty-state composition. Replaces the older dashed
+   .placeholder for surfaces that deserve more than a fallback affordance. */
+.empty-state {
+  text-align: center;
+  padding: 56px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.empty-state-glyph {
+  color: var(--brand);
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+.empty-state-title {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  font-size: clamp(24px, 4vw, 32px);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  line-height: 1.1;
+  margin: 0;
+}
+.empty-state-sub {
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  max-width: 36ch;
+  margin: 0;
+}
+.empty-state-cta {
+  margin-top: 8px;
+}
+
+/* Mobile scaffold trims — formerly bundled in a cross-section media
+   query alongside nav + hero rules, now scoped to just the shared
+   scaffolds that remain in this file. */
+@media (max-width: 720px) {
+  .page-section { padding: 16px 16px 40px; }
+  .back-link { margin-bottom: 12px; }
+  .section-head { padding-bottom: 12px; margin-bottom: 16px; }
+}
+
+/* Generic button system used by Me + future surfaces */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 0;
+  cursor: pointer;
+  transition: transform var(--dur-ui) var(--ease-out), background var(--dur-ui) var(--ease-out), color var(--dur-ui) var(--ease-out), box-shadow var(--dur-ui) var(--ease-out);
+}
+.btn:active { transform: scale(0.96); }
+
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 8px 22px rgba(28, 26, 23, 0.22);
+}
+.btn-primary:hover {
+  background: #2b2722;
+  box-shadow: 0 12px 28px rgba(28, 26, 23, 0.28);
+}
+.btn-text {
+  background: transparent;
+  color: var(--ink-soft);
+  padding: 12px 14px;
+}
+.btn-text:hover { color: var(--ink); }
+
+/* --------------------------- 404 page ----------------------------- */
+
+.nf {
+  text-align: center;
+  padding-top: 80px;
+}
+.nf-title {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  font-size: clamp(34px, 6vw, 52px);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin: 14px 0 14px;
+}
+.nf-body {
+  font-size: 16px;
+  color: var(--ink-soft);
+  max-width: 46ch;
+  margin: 0 auto 28px;
+  line-height: 1.55;
+}
+
+/* Story footer link (reopen welcome) */
+.story-foot-link {
+  margin-top: 14px;
+  background: transparent;
+  border: 0;
+  color: var(--brand-deep);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+.story-foot-link:hover { color: var(--ink); background: rgba(28,26,23,0.05); }
+
+
+/* ------------------------- Reduced motion ------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .lb { animation: none !important; }
+
+  .toast,
+  .wm-backdrop,
+  .wm-card {
+    transition-duration: 0.01ms !important;
+  }
+
+  .strip-card,
+  .ph-tile,
+  .btn,
+  .cta,
+  .fab,
+  .gf-chip,
+  .app-footer-icon,
+  .tabbar-capture {
+    transition: none !important;
+  }
+}
+

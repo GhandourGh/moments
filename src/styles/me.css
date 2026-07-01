@@ -93,3 +93,66 @@
   .me-card-text { margin-left: auto; margin-right: auto; }
   .me-card-actions { justify-content: center; }
 }
+
+/* ---------------------- Editable name section ---------------------- */
+.me-name-block { margin-top: 20px; }
+.me-block-lede {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: -6px 0 12px;
+  max-width: 52ch;
+  line-height: 1.5;
+}
+.me-name-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: end;
+  max-width: 520px;
+}
+.me-name-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.me-name-saved {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-mute);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.me-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.me-name-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.me-name-input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.me-name-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-tint-soft);
+}
+.me-name-input[aria-invalid="true"] {
+  border-color: var(--brand);
+}
+@media (max-width: 480px) {
+  .me-name-form { grid-template-columns: 1fr; }
+}
