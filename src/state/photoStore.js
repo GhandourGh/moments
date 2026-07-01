@@ -6,7 +6,11 @@
  *   status: "local" | "pending" | "synced" | "failed"
  *   Records without `status` were written by an earlier build — treat as "local".
  * Object store keyPath: "id"
+ *
+ * TEMP: persistence is off — captures live in memory only and clear on refresh.
+ * Flip to `true` to restore IndexedDB rehydration + upload queue durability.
  */
+const PERSIST_ENABLED = false;
 
 const DB_NAME = "moments";
 const DB_VERSION = 1;
@@ -39,6 +43,7 @@ function tx(mode) {
 }
 
 export async function listShots() {
+  if (!PERSIST_ENABLED) return [];
   try {
     const store = await tx("readonly");
     return new Promise((resolve, reject) => {
@@ -52,6 +57,7 @@ export async function listShots() {
 }
 
 export async function putShot(record) {
+  if (!PERSIST_ENABLED) return;
   try {
     const store = await tx("readwrite");
     return new Promise((resolve, reject) => {
@@ -65,6 +71,7 @@ export async function putShot(record) {
 }
 
 export async function deleteShot(id) {
+  if (!PERSIST_ENABLED) return;
   try {
     const store = await tx("readwrite");
     return new Promise((resolve, reject) => {
