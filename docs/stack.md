@@ -25,8 +25,8 @@ Locked so `npm install` and `vercel deploy` don't move under us.
 - **Vercel project name**: `moments`
 - **Supabase project name**: `Moments`
 - **Supabase project ref**: `ttjkrtvlgcutrhbzdldj`
-- **Supabase project region**: _pending — confirm from the dashboard and record here_
-- **Vercel project region**: `iad1` default (change to closer region if guests are outside US East)
+- **Supabase project region**: `ap-southeast-1` (Singapore)
+- **Vercel project region**: `sin1` (Singapore) — matches Supabase to keep function → DB latency low
 
 ## Environments
 
