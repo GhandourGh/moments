@@ -38,7 +38,7 @@ function ensureLanCert(certDir, ip) {
 
   execSync(
     `openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" ` +
-      `-days 30 -nodes -subj "/CN=FaceGather Dev" ` +
+      `-days 30 -nodes -subj "/CN=MOMENTS Dev" ` +
       `-addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:${ip}"`,
     { stdio: "pipe" }
   );

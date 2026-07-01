@@ -8,8 +8,8 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * See docs/NATIVE_CAMERA_EVALUATION.md for the full rollout plan.
  */
 const config: CapacitorConfig = {
-  appId: "com.facegather.guest",
-  appName: "FaceGather",
+  appId: "com.moments.guest",
+  appName: "MOMENTS",
   webDir: "dist",
   server: {
     // androidScheme: "https",

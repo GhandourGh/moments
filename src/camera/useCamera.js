@@ -13,7 +13,7 @@ import {
   ZOOM_HUD_MS,
 } from "./constants.js";
 import { captureStillFromVideo, pickVideoMime, waitForVideoFrame } from "./capture.js";
-import { playRecordStart, playRecordStop, playShutter } from "../lib/sounds.js";
+import { playShutter } from "../lib/sounds.js";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -387,11 +387,9 @@ export function useCamera({ videoRef, facing, mode, permissionGate, isSelfie }) 
     const rec = recorderRef.current;
     if (!rec || rec.state === "inactive") return;
     try { navigator.vibrate?.(8); } catch { /* no-op */ }
-    playRecordStop();
-    try {
-      if (rec.state === "recording") rec.requestData();
-      rec.stop();
-    } catch { /* onstop may still fire */ }
+    // No requestData() here — it can race with stop() on iOS Safari and
+    // leave us with an empty final dataavailable. stop() flushes on its own.
+    try { rec.stop(); } catch { /* onstop may still fire */ }
   }, []);
 
   const abortRecording = useCallback(() => {
@@ -465,7 +463,9 @@ export function useCamera({ videoRef, facing, mode, permissionGate, isSelfie }) 
     };
 
     recorderRef.current = recorder;
-    try { recorder.start(); }
+    // Timeslice (1000 ms): without it iOS Safari sometimes flushes an empty
+    // dataavailable on stop. Periodic chunks guarantee we have bytes.
+    try { recorder.start(1000); }
     catch {
       recorderRef.current = null;
       if (torchLit) setTorch(stream, false).catch(() => {});
@@ -477,7 +477,6 @@ export function useCamera({ videoRef, facing, mode, permissionGate, isSelfie }) 
     setRecording(true);
     setRecordElapsed(0);
     try { navigator.vibrate?.(14); } catch { /* no-op */ }
-    playRecordStart();
     recordTimerRef.current = setInterval(() => {
       const ms = Date.now() - recordStartRef.current;
       setRecordElapsed(ms);

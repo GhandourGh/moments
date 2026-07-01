@@ -50,6 +50,10 @@ function LayoutInner() {
     () => shots.find((s) => !s.seed && s.mediaType !== "video")?.url ?? null,
     [shots],
   );
+  const photoCount = useMemo(
+    () => shots.filter((s) => !s.seed && s.mediaType !== "video").length,
+    [shots],
+  );
 
   // Capture → optimistic toast. Confirm-toast (synced) would be noisy at scale,
   // so we only speak up on the action the guest just took and on failure.
@@ -114,6 +118,7 @@ function LayoutInner() {
             onCapture={handleCapture}
             onClose={() => setCameraOpen(false)}
             lastPhotoUrl={lastPhotoUrl}
+            photoCount={photoCount}
             onViewLastPhoto={handleViewLastPhoto}
           />
         )}

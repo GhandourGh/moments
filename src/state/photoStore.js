@@ -8,7 +8,7 @@
  * Object store keyPath: "id"
  */
 
-const DB_NAME = "facegather";
+const DB_NAME = "moments";
 const DB_VERSION = 1;
 const STORE = "shots";
 

@@ -25,7 +25,7 @@ export const DRESS_CODE = "Garden formal · earth tones";
 
 /** App + host contact — shown in the site footer. */
 export const APP = {
-  name: "FaceGather",
+  name: "MOMENTS",
   about:
     "A shared photo gallery for wedding guests. Capture moments, browse everyone's shots, and download keepsakes — all in one place.",
   host: "Origin",

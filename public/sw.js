@@ -1,4 +1,4 @@
-/* FaceGather guest-ui service worker — minimal cache-first shell.
+/* MOMENTS guest-ui service worker — minimal cache-first shell.
  *
  * Goals:
  *  - Make the app installable on Android (Chrome requires a registered SW).
@@ -7,7 +7,7 @@
  *
  * Cache name is versioned so bumping the constant invalidates old assets.
  */
-const VERSION = "fg-v6";
+const VERSION = "fg-v7";
 const SHELL = ["/", "/logo.svg", "/manifest.webmanifest", "/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 function isPhotoAsset(pathname) {

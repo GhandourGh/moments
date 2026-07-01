@@ -2,7 +2,7 @@
 
 ## Context
 
-FaceGather's guest camera is a **browser PWA** (`getUserMedia` + canvas JPEG) in
+MOMENTS's guest camera is a **browser PWA** (`getUserMedia` + canvas JPEG) in
 [`src/components/CameraView.jsx`](../src/components/CameraView.jsx). Installed
 guests (Add to Home Screen) still run inside **Safari WebKit / Chrome WebView**
 with the same APIs — not AVFoundation or CameraX directly.
@@ -33,7 +33,7 @@ Detection helpers live in [`src/camera/detectNativeShell.js`](../src/camera/dete
 
 ```bash
 npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android
-npx cap init "FaceGather" com.facegather.guest --web-dir dist
+npx cap init "MOMENTS" com.moments.guest --web-dir dist
 ```
 
 - Point `webDir` at Vite `dist/` output.
@@ -76,7 +76,7 @@ Adapter stubs are in [`src/camera/adapters/`](../src/camera/adapters/):
 ## Rollout Strategy
 
 1. **Ship web optimizations first** (canvas pool, ImageCapture API) — covers all guests.
-2. **Publish Capacitor build** as optional “FaceGather Camera” app for venues that want max quality.
+2. **Publish Capacitor build** as optional “MOMENTS Camera” app for venues that want max quality.
 3. **Deep link** from A2HS install guide: “For best photos, get the app” on iOS where TWA is unavailable.
 4. **Feature flag** `VITE_NATIVE_CAMERA=1` only in Capacitor builds.
 

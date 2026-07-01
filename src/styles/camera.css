@@ -636,16 +636,37 @@
 
 /* Last-photo thumbnail — bottom-left affordance like native camera apps. */
 .cam-last-photo {
+  position: relative;
   width: 44px;
   height: 44px;
   padding: 0;
   border: 2px solid rgba(255, 255, 255, 0.85);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   background: rgba(0, 0, 0, 0.35);
   cursor: pointer;
   flex-shrink: 0;
   transition: transform 0.12s, border-color 0.15s;
+}
+.cam-last-photo img {
+  border-radius: 6px;
+}
+.cam-last-photo-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink, #111);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
 }
 .cam-last-photo img {
   width: 100%;

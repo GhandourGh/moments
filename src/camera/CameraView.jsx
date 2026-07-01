@@ -32,6 +32,7 @@ export default function CameraView({
   onClose,
   onViewLastPhoto,
   lastPhotoUrl = null,
+  photoCount = 0,
   defaultFacing = "environment",
   closeOnCapture = false,
   allowVideo = true,
@@ -238,7 +239,7 @@ export default function CameraView({
 
       {pending && pending.mediaType === "video" ? (
         <video
-          className="cam-preview"
+          className={"cam-preview" + (isSelfie ? " cam-preview--mirror" : "")}
           src={pending.url}
           controls
           playsInline
@@ -317,7 +318,7 @@ export default function CameraView({
           </div>
           <h2 className="cam-permission-title">Camera access</h2>
           <p className="cam-permission-copy">
-            FaceGather needs your camera to capture photos for tonight&apos;s album.
+            MOMENTS needs your camera to capture photos for tonight&apos;s album.
             Your shots stay on this device until you choose to share them.
           </p>
           <button
@@ -365,10 +366,15 @@ export default function CameraView({
                   type="button"
                   className="cam-last-photo"
                   onClick={onViewLastPhoto}
-                  aria-label="View last photo"
+                  aria-label={photoCount > 0 ? `View gallery (${photoCount} photo${photoCount === 1 ? "" : "s"})` : "View last photo"}
                   title="Last photo"
                 >
                   <img src={lastPhotoUrl} alt="" />
+                  {photoCount > 0 && (
+                    <span className="cam-last-photo-count tabular-nums" aria-hidden>
+                      {photoCount > 99 ? "99+" : photoCount}
+                    </span>
+                  )}
                 </button>
               )}
             </div>
