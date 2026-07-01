@@ -22,7 +22,9 @@ Locked so `npm install` and `vercel deploy` don't move under us.
 - **React**: 18.3.x
 - **Vercel CLI**: `>=32`
 - **Supabase CLI**: `>=1.180`
-- **Supabase project region**: `<fill in — pick closest to guests>`
+- **Vercel project name**: `moments`
+- **Supabase project name**: `Moments`
+- **Supabase project region**: _pending — pick closest to guests when creating the project_
 - **Vercel project region**: `iad1` default (change to closer region if guests are outside US East)
 
 ## Environments
