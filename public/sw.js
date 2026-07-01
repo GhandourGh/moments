@@ -7,11 +7,15 @@
  *
  * Cache name is versioned so bumping the constant invalidates old assets.
  */
-const VERSION = "fg-v7";
-const SHELL = ["/", "/logo.svg", "/manifest.webmanifest", "/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png"];
+const VERSION = "fg-v8";
+const SHELL = ["/", "/logo.svg", "/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 function isPhotoAsset(pathname) {
   return /^\/(hero\.jpg|seed\/)/.test(pathname);
+}
+
+function isManifest(pathname) {
+  return pathname === "/manifest.webmanifest";
 }
 
 self.addEventListener("install", (event) => {
@@ -49,6 +53,22 @@ self.addEventListener("fetch", (event) => {
   }
 
   const pathname = new URL(req.url).pathname;
+
+  // Network-first for manifest so PWA install name updates after rebrand.
+  if (isManifest(pathname)) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.status === 200 && res.type === "basic") {
+            const copy = res.clone();
+            caches.open(VERSION).then((c) => c.put(req, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
 
   // Network-first for gallery/hero photos so deploys show new images immediately.
   if (isPhotoAsset(pathname)) {
