@@ -360,7 +360,7 @@ export async function adminDeletePhoto(idOrSlug, photoId, passcode) {
   return { ok: true, ...data };
 }
 
-/** Upload a hero / cover image for an event (public URL returned). */
+/** Upload a hero / cover image for an event (signed URL + storage key returned). */
 export async function adminUploadHeroImage(idOrSlug, blob, passcode) {
   const body = new FormData();
   body.append("file", blob, "hero.jpg");
@@ -370,5 +370,5 @@ export async function adminUploadHeroImage(idOrSlug, blob, passcode) {
     headers: { "x-admin-passcode": passcode },
     body,
   });
-  return { ok: true, url: data.url };
+  return { ok: true, url: data.url, storageKey: data.storageKey };
 }

@@ -18,7 +18,13 @@
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: url("/hero.jpg") center/cover no-repeat;
+  background-color: #2a2826;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.hero-bg--image {
+  /* image applied via inline style once event content has loaded */
 }
 /* Darkening overlay so the white serif type keeps contrast over a busy photo,
    plus a soft fade into the paper page below. */

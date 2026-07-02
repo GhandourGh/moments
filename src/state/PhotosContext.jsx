@@ -46,7 +46,7 @@ function rehydrateRecord(r, trackUrl) {
 function mergeServerShots(prev, serverShots) {
   const known = new Set(prev.map((s) => s.serverId || s.id));
   const fresh = serverShots
-    .filter((r) => r.url && !known.has(r.id))
+    .filter((r) => !known.has(r.id))
     .map((r) => ({
       id: r.id,
       serverId: r.id,

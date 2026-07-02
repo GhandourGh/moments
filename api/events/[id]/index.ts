@@ -4,6 +4,7 @@ import { admin } from "../../_lib/supabase.js";
 import { isAdmin } from "../../_lib/session.js";
 import { validContent } from "../../_lib/validate.js";
 import { resolveEvent } from "../../_lib/events.js";
+import { signedUrlFor } from "../../_lib/media.js";
 import { captureError, withSentry } from "../../_lib/sentry.js";
 
 /**
@@ -21,12 +22,7 @@ import { captureError, withSentry } from "../../_lib/sentry.js";
 const COVER_MAX_BYTES = 5 * 1024 * 1024;
 const COVER_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const COVER_EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
-const COVERS_BUCKET = "covers";
-
-function publicCoverUrl(eventId: string, ext: string): string {
-  const base = (process.env.SUPABASE_URL ?? "").replace(/\/+$/, "");
-  return `${base}/storage/v1/object/public/${COVERS_BUCKET}/${eventId}/hero.${ext}`;
-}
+const HERO_BUCKET = "photos";
 
 async function postCover(req: VercelRequest, res: VercelResponse, id: string) {
   if (!isAdmin(req)) return sendError(res, "unauthenticated", "bad or missing x-admin-passcode");
@@ -47,16 +43,33 @@ async function postCover(req: VercelRequest, res: VercelResponse, id: string) {
 
   const ext = COVER_EXT[file.mime];
   const storageKey = `${ev.id}/hero.${ext}`;
-  const { error: upErr } = await admin().storage.from(COVERS_BUCKET).upload(storageKey, file.buffer, {
+  const { error: upErr } = await admin().storage.from(HERO_BUCKET).upload(storageKey, file.buffer, {
     contentType: file.mime,
     upsert: true,
   });
   if (upErr) throw upErr;
 
-  res.status(200).json({ url: publicCoverUrl(ev.id, ext) });
+  const url = await signedUrlFor(HERO_BUCKET, storageKey);
+  if (!url) return sendError(res, "internal", "could not sign hero url");
+  res.status(200).json({ url, storageKey });
 }
 
-function shape(data: any) {
+/** Sign hero storage keys for the client; strip stale public URLs from DB. */
+async function enrichContent(raw: Record<string, unknown> | null | undefined) {
+  const content = { ...(raw ?? {}) };
+  const key = typeof content.heroStorageKey === "string" ? content.heroStorageKey.trim() : "";
+  if (key) {
+    const url = await signedUrlFor(HERO_BUCKET, key);
+    if (url) content.heroImageUrl = url;
+    else delete content.heroImageUrl;
+  } else if (typeof content.heroImageUrl === "string" && content.heroImageUrl) {
+    // Legacy URL without a storage key — only keep local stock paths.
+    if (!content.heroImageUrl.startsWith("/")) delete content.heroImageUrl;
+  }
+  return content;
+}
+
+async function shape(data: any) {
   return {
     id: data.id,
     slug: data.slug,
@@ -64,14 +77,14 @@ function shape(data: any) {
     startsAt: data.starts_at,
     endsAt: data.ends_at,
     coverPhotoId: data.cover_photo_id,
-    content: data.content ?? {},
+    content: await enrichContent(data.content ?? {}),
   };
 }
 
 async function get(req: VercelRequest, res: VercelResponse, id: string) {
   const data = await resolveEvent(id);
   if (!data) return sendError(res, "not_found");
-  res.status(200).json(shape(data));
+  res.status(200).json(await shape(data));
 }
 
 async function patch(req: VercelRequest, res: VercelResponse, id: string) {
@@ -112,7 +125,7 @@ async function patch(req: VercelRequest, res: VercelResponse, id: string) {
     .maybeSingle();
   if (error) throw error;
   if (!data) return sendError(res, "not_found");
-  res.status(200).json(shape(data));
+  res.status(200).json(await shape(data));
 }
 
 /**
@@ -176,7 +189,7 @@ async function del(req: VercelRequest, res: VercelResponse, id: string) {
     captureError(err, { where: "event delete: videos purge", eventId: ev.id });
   }
   try {
-    const { error: cErr } = await admin().storage.from("covers").remove([
+    const { error: cErr } = await admin().storage.from("photos").remove([
       `${ev.id}/hero.jpg`,
       `${ev.id}/hero.png`,
       `${ev.id}/hero.webp`,

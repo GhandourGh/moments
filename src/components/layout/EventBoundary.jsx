@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useParams } from "react-router-dom";
 import { setActiveEvent, getLastEvent } from '@/state/activeEvent.js';
 import { createSession, getEvent } from '@/services/api/index.js';
-import { setEventContent } from '@/state/eventContent.js';
+import { setEventContent, resetEventContent } from '@/state/eventContent.js';
 import { getGuest } from '@/state/guest.js';
 import { warmup as warmupModeration } from '@/services/moderation/index.js';
 
@@ -34,9 +34,9 @@ export default function EventBoundary() {
 
   useEffect(() => {
     let cancelled = false;
+    resetEventContent();
 
-    // Re-bind the moment.sid cookie to this event. Guests without a name yet
-    // get their session from the welcome modal instead.
+    // Re-bind the moment.sid cookie to this event.
     if (getGuest()) {
       createSession()
         .then((r) => {

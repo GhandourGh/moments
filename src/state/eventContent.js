@@ -40,7 +40,7 @@ const DEFAULTS = Object.freeze({
   eventTitle: DEFAULT_COUPLE.names,
 });
 
-let current = DEFAULTS;
+let current = { ...DEFAULTS, loaded: false };
 const listeners = new Set();
 
 /** Derive display fields the content doc may omit. */
@@ -59,6 +59,14 @@ export function getEventContent() {
   return current;
 }
 
+/** Reset to defaults while a new event slug loads (prevents hero.jpg flash). */
+export function resetEventContent() {
+  current = { ...DEFAULTS, loaded: false, heroImageUrl: "" };
+  listeners.forEach((cb) => {
+    try { cb(current); } catch { /* one bad subscriber can't break the rest */ }
+  });
+}
+
 /**
  * Merge a server event (GET /api/events/:id shape) over the defaults.
  * Empty/missing keys keep their default — an event with no content set
@@ -69,12 +77,15 @@ export function setEventContent(event) {
   const clean = Object.fromEntries(
     Object.entries(c).filter(([, v]) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0))
   );
+  const hasHero = Boolean(clean.heroStorageKey || clean.heroImageUrl);
   current = withDerived({
     ...DEFAULTS,
+    loaded: true,
     eventTitle: event?.title ?? DEFAULTS.eventTitle,
     dateISO: event?.startsAt ? event.startsAt.slice(0, 10) : DEFAULTS.dateISO,
     coupleNames: event?.title ?? DEFAULTS.coupleNames,
     ...clean,
+    ...(hasHero ? {} : { heroImageUrl: "" }),
   });
   listeners.forEach((cb) => {
     try { cb(current); } catch { /* one bad subscriber can't break the rest */ }

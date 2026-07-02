@@ -170,8 +170,8 @@ function CreateEventForm({ passcode, onCreated }) {
       }, passcode);
       if (heroPending) {
         const up = await adminUploadHeroImage(res.event.id, heroPending, passcode);
-        await adminUpdateEvent(res.event.id, { content: { ...cleaned, heroImageUrl: up.url } }, passcode);
-        res.event = { ...res.event, content: { ...cleaned, heroImageUrl: up.url } };
+        await adminUpdateEvent(res.event.id, { content: { ...cleaned, heroStorageKey: up.storageKey } }, passcode);
+        res.event = { ...res.event, content: { ...cleaned, heroStorageKey: up.storageKey } };
       }
       setCreated(res.event);
       setTitle(""); setStartsAt(""); setEndsAt(""); setContent(EMPTY_CONTENT); setHeroPending(null);
@@ -400,6 +400,31 @@ function EditEventPanel({ passcode, event, onSaved, onDeleted }) {
     return () => { cancelled = true; };
   }, [event.slug, attempt]);
 
+  async function saveHeroContent(nextContent) {
+    const cleaned = cleanContent(nextContent);
+    const res = await adminUpdateEvent(event.id, { content: cleaned }, passcode);
+    setContent({ ...EMPTY_CONTENT, ...(res.event.content ?? {}) });
+    setOriginal((o) => ({ ...o, content: JSON.stringify(cleaned) }));
+  }
+
+  async function onHeroUploaded(upload) {
+    const next = upload?.storageKey
+      ? { ...content, heroStorageKey: upload.storageKey, heroImageUrl: upload.url }
+      : { ...content, heroStorageKey: "", heroImageUrl: "" };
+    setContent(next);
+    setBusy(true);
+    setError("");
+    try {
+      await saveHeroContent(next);
+    } catch (err) {
+      setError(err.message || upload
+        ? "Cover uploaded but couldn't save — tap Save changes."
+        : "Couldn't remove cover — tap Save changes.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function save(e) {
     e.preventDefault();
     if (!original) return;
@@ -467,6 +492,7 @@ function EditEventPanel({ passcode, event, onSaved, onDeleted }) {
             onChange={setContent}
             eventId={event.id}
             passcode={passcode}
+            onHeroUploaded={onHeroUploaded}
           />
           {error && <p className="host-error" role="alert">{error}</p>}
           <button className="btn btn-primary" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>

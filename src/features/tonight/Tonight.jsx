@@ -49,7 +49,12 @@ export default function Tonight() {
     <>
       <section className="hero" id="hero">
         <div className="hero-media" aria-hidden>
-          <div className="hero-bg" style={{ backgroundImage: `url("${content.heroImageUrl}")` }} />
+          <div
+            className={`hero-bg${content.loaded && content.heroImageUrl ? " hero-bg--image" : ""}`}
+            style={content.loaded && content.heroImageUrl
+              ? { backgroundImage: `url("${content.heroImageUrl}")` }
+              : undefined}
+          />
           <div className="hero-vignette" />
         </div>
 

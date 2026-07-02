@@ -14,6 +14,7 @@ export const EMPTY_CONTENT = {
   hashtag: "",
   heroLede: "",
   heroImageUrl: "",
+  heroStorageKey: "",
   dressCode: "",
   schedule: [],
   story: [],
@@ -22,7 +23,7 @@ export const EMPTY_CONTENT = {
 /** Strip empty fields/rows so the stored document only holds real overrides. */
 export function cleanContent(c) {
   const out = {};
-  for (const key of ["coupleNames", "dateDisplay", "hashtag", "heroLede", "heroImageUrl", "dressCode"]) {
+  for (const key of ["coupleNames", "dateDisplay", "hashtag", "heroLede", "heroStorageKey", "dressCode"]) {
     const v = (c[key] ?? "").trim();
     if (v) out[key] = v;
   }
@@ -64,17 +65,17 @@ async function prepareHeroBlob(file) {
   }
 }
 
-function HeroImageField({ value, onChange, eventId, passcode, onPendingFile }) {
+function HeroImageField({ value, previewUrl, onChange, onUploaded, eventId, passcode, onPendingFile }) {
   const inputId = useId();
   const inputRef = useRef(null);
-  const [preview, setPreview] = useState(value || "");
+  const [preview, setPreview] = useState(previewUrl || "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [pendingName, setPendingName] = useState("");
 
   useEffect(() => {
-    setPreview(value || "");
-  }, [value]);
+    setPreview(previewUrl || "");
+  }, [previewUrl]);
 
   useEffect(() => () => {
     if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
@@ -98,10 +99,11 @@ function HeroImageField({ value, onChange, eventId, passcode, onPendingFile }) {
 
       if (eventId && passcode) {
         const res = await adminUploadHeroImage(eventId, blob, passcode);
-        onChange(res.url);
+        onChange(res.storageKey);
         setPreview(res.url);
         setPendingName("");
         onPendingFile?.(null);
+        onUploaded?.({ storageKey: res.storageKey, url: res.url });
       } else {
         onPendingFile?.(blob);
         setPendingName(file.name);
@@ -120,6 +122,7 @@ function HeroImageField({ value, onChange, eventId, passcode, onPendingFile }) {
     setPendingName("");
     onChange("");
     onPendingFile?.(null);
+    onUploaded?.(null);
     setError("");
   }
 
@@ -188,6 +191,7 @@ export default function ContentEditor({
   eventId,
   passcode,
   onHeroPending,
+  onHeroUploaded,
 }) {
   const c = { ...EMPTY_CONTENT, ...value };
   const set = (patch) => onChange({ ...c, ...patch });
@@ -221,8 +225,10 @@ export default function ContentEditor({
         onChange={(e) => set({ heroLede: e.target.value })} />
 
       <HeroImageField
-        value={c.heroImageUrl}
-        onChange={(heroImageUrl) => set({ heroImageUrl })}
+        value={c.heroStorageKey}
+        previewUrl={c.heroImageUrl}
+        onChange={(heroStorageKey) => set({ heroStorageKey })}
+        onUploaded={onHeroUploaded}
         eventId={eventId}
         passcode={passcode}
         onPendingFile={onHeroPending}
