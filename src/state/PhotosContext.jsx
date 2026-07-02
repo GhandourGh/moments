@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { SEED_SHOTS } from '@/data/seed.js';
 import { deleteShot, listShots } from '@/services/storage/photoStore.js';
 import { enqueue, subscribe, tick } from '@/services/storage/uploadQueue.js';
-import { createSession, fetchShotsSince, getEventId, hasBackend } from '@/services/api/index.js';
+import { createSession, fetchShotsSince, getEventId, getServerGuestId, hasBackend } from '@/services/api/index.js';
 import { getGuest, subscribeGuest } from '@/state/guest.js';
 
 const POLL_MS = 10_000;
@@ -51,9 +51,10 @@ function mergeServerShots(prev, serverShots) {
       id: r.id,
       serverId: r.id,
       serverUrl: r.url,
-      url: r.url,
+      url: r.url ?? "",
       takenAt: r.takenAt,
       status: "synced",
+      mediaType: r.mediaType ?? "photo",
       guestId: r.guestId,
       guestFirstName: r.guestFirstName,
       guestLastName: r.guestLastName,
@@ -62,13 +63,30 @@ function mergeServerShots(prev, serverShots) {
   let next = prev.map((s) => {
     if (!s.serverId) return s;
     const echo = byServerId.get(s.serverId);
-    if (!echo?.url) return s;
-    return { ...s, url: echo.url, serverUrl: echo.url };
+    if (!echo) return s;
+    const patch = {
+      guestId: echo.guestId,
+      guestFirstName: echo.guestFirstName,
+      guestLastName: echo.guestLastName,
+    };
+    if (!echo.url) return { ...s, ...patch };
+    return { ...s, ...patch, url: echo.url, serverUrl: echo.url };
   });
   if (fresh.length) {
     next = [...fresh, ...next].sort((a, b) => b.takenAt - a.takenAt);
   }
   return next;
+}
+
+/** Drop server rows that no longer exist; keep pending local uploads. */
+function reconcileServerShots(prev, serverShots) {
+  const serverIds = new Set(serverShots.map((r) => r.id));
+  const merged = mergeServerShots(prev, serverShots);
+  return merged.filter((s) => {
+    if (s.seed) return false;
+    if (!s.serverId) return true;
+    return serverIds.has(s.serverId);
+  });
 }
 
 /**
@@ -119,7 +137,7 @@ export function PhotosProvider({ children }) {
       try {
         const res = await fetchShotsSince(0);
         if (res.ok && Array.isArray(res.shots)) {
-          merged = mergeServerShots(merged, res.shots);
+          merged = reconcileServerShots(merged, res.shots);
         }
       } catch { /* poll loop will retry */ }
     }
@@ -173,7 +191,7 @@ export function PhotosProvider({ children }) {
     const url = URL.createObjectURL(blob);
     const status = hasBackend() ? "pending" : "local";
     const attribution = {
-      guestId: guest.id,
+      guestId: getServerGuestId() || guest.id,
       guestFirstName: guest.firstName,
       guestLastName: guest.lastName,
     };
@@ -199,25 +217,36 @@ export function PhotosProvider({ children }) {
     let timer = null;
     let since = 0;
 
+    let pollCount = 0;
+    const FULL_SYNC_EVERY = 6;
+
     async function poll() {
+      // A visibility flap can invoke poll() while a scheduled one is pending;
+      // without clearing it, each flap adds a parallel poll chain that never
+      // dies. One timer, one chain.
+      if (timer) { clearTimeout(timer); timer = null; }
       if (cancelled || document.hidden) return;
       if (!getGuest()) {
-        if (!cancelled) timer = setTimeout(poll, POLL_MS);
+        if (!cancelled && !timer) timer = setTimeout(poll, POLL_MS);
         return;
       }
       try {
         await createSession().catch(() => {});
+        pollCount += 1;
         const needsUrls = shotsRef.current.some((s) => s.serverId && !s.url);
-        const res = await fetchShotsSince(needsUrls ? 0 : since);
-        if (res.ok && Array.isArray(res.shots) && res.shots.length) {
-          setShots((prev) => mergeServerShots(prev, res.shots));
-          if (!needsUrls) {
+        const fullSync = needsUrls || pollCount % FULL_SYNC_EVERY === 0;
+        const res = await fetchShotsSince(fullSync ? 0 : since);
+        if (res.ok && Array.isArray(res.shots)) {
+          setShots((prev) => (
+            fullSync ? reconcileServerShots(prev, res.shots) : mergeServerShots(prev, res.shots)
+          ));
+          if (!fullSync && res.shots.length) {
             const maxTakenAt = Math.max(...res.shots.map((r) => r.takenAt));
             since = Math.max(since, maxTakenAt - 60_000);
           }
         }
       } catch { /* one bad poll never breaks the loop */ }
-      if (!cancelled) timer = setTimeout(poll, POLL_MS);
+      if (!cancelled && !timer) timer = setTimeout(poll, POLL_MS);
     }
 
     function onVisible() { if (!document.hidden) poll(); }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { retry } from '@/services/storage/uploadQueue.js';
 
 /**
@@ -32,7 +32,7 @@ export default function PhotoGrid({ shots, onOpen }) {
               </span>
             </>
           ) : s.url ? (
-            <img src={s.url} alt="" loading="lazy" />
+            <TileImage src={s.url} />
           ) : (
             <span className="ph-tile-loading" aria-hidden />
           )}
@@ -40,6 +40,14 @@ export default function PhotoGrid({ shots, onOpen }) {
         </button>
       ))}
     </div>
+  );
+}
+
+function TileImage({ src }) {
+  const [broken, setBroken] = useState(false);
+  if (!src || broken) return <span className="ph-tile-loading" aria-hidden />;
+  return (
+    <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} />
   );
 }
 

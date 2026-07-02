@@ -21,6 +21,21 @@ import { listShots, putShot } from '@/services/storage/photoStore.js';
 const MAX_ATTEMPTS = 6;
 const BACKOFF_MS = [0, 2_000, 8_000, 30_000, 60_000, 120_000];
 
+/**
+ * Server verdicts that no amount of retrying can change. Anything else
+ * (network drop, 500, timeout) is treated as transient and backed off.
+ * moderation_blocked maps to the terminal "blocked" status (no retry UI);
+ * the rest map to "failed" immediately instead of burning 6 attempts.
+ */
+const TERMINAL_CODES = new Set([
+  "payload_too_large",
+  "file_too_large",
+  "unsupported_media",
+  "duration_too_long",
+  "event_ended",
+  "upload_rejected",
+]);
+
 const listeners = new Set();
 let running = false;
 let retryTimer = null;
@@ -163,7 +178,18 @@ async function uploadOne(rec) {
         .catch(() => {});
     }
     return true;
-  } catch {
+  } catch (err) {
+    const code = err?.code;
+    if (code === "moderation_blocked") {
+      await saveRecord({ ...rec, status: "blocked", attempts: MAX_ATTEMPTS });
+      emit(rec.id, { status: "blocked", attempts: MAX_ATTEMPTS });
+      return true; // terminal for this shot, not the connection — keep draining
+    }
+    if (TERMINAL_CODES.has(code)) {
+      await saveRecord({ ...rec, status: "failed", attempts: MAX_ATTEMPTS });
+      emit(rec.id, { status: "failed", attempts: MAX_ATTEMPTS });
+      return true;
+    }
     const attempts = (rec.attempts ?? 0) + 1;
     const failed = attempts >= MAX_ATTEMPTS;
     const next = { ...rec, attempts, status: failed ? "failed" : "pending" };

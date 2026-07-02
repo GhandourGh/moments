@@ -37,26 +37,41 @@ export async function ensureGalleryIndexed(shots, { signal } = {}) {
 
   inflight = (async () => {
     let done = 0;
+    // Descriptors are extracted per photo but posted in batches — one request
+    // per ~10 photos instead of per photo (the endpoint accepts up to 50).
+    const BATCH = 10;
+    let batch = [];
+
+    const flush = async () => {
+      if (!batch.length) return;
+      const items = batch;
+      batch = [];
+      try {
+        await postFaceEmbeddings(items, { signal });
+        done += items.length;
+      } catch {
+        /* best-effort — the next /me visit re-tries unposted photos */
+        items.forEach((it) => indexed.delete(it.photoId));
+      }
+    };
+
     for (const shot of pending) {
       if (signal?.aborted) break;
       const photoId = shot.serverId;
       try {
         const blob = await blobFromShot(shot, signal);
-        if (!blob) {
-          indexed.add(photoId);
-          continue;
-        }
-        const embeddings = await descriptorsForPhoto(blob);
-        if (embeddings.length) {
-          await postFaceEmbeddings([{ photoId, embeddings }], { signal });
-          done += 1;
+        if (blob) {
+          const embeddings = await descriptorsForPhoto(blob);
+          if (embeddings.length) batch.push({ photoId, embeddings });
         }
       } catch {
         /* best-effort — one bad photo must not block the rest */
       } finally {
         indexed.add(photoId);
       }
+      if (batch.length >= BATCH) await flush();
     }
+    await flush();
     return { indexed: done };
   })().finally(() => { inflight = null; });
 

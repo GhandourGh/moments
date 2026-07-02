@@ -10,6 +10,7 @@ import { ensureGalleryIndexed } from '@/services/faces/galleryIndex.js';
 import { warmup as warmupFaces } from '@/services/faces/index.js';
 import EmptyState from '@/components/ui/EmptyState.jsx';
 import { getGuest, isValidName, subscribeGuest, updateGuest } from '@/state/guest.js';
+import { isMyShot } from '@/state/guestAttribution.js';
 
 /**
  * "Find photos I'm in." The selfie descriptor is computed on-device and
@@ -24,7 +25,10 @@ export default function Me() {
   const [matching, setMatching] = useState(false);
   const [matchOpenIndex, setMatchOpenIndex] = useState(null);
   const [mineOpenIndex, setMineOpenIndex] = useState(null);
+  const [guestRev, setGuestRev] = useState(0);
   const indexAbort = useRef(null);
+
+  useEffect(() => subscribeGuest(() => setGuestRev((n) => n + 1)), []);
 
   const galleryShots = useMemo(
     () => shots.filter((s) => !s.seed && (s.mediaType ?? "photo") !== "video"),
@@ -34,7 +38,7 @@ export default function Me() {
     () => galleryShots.map((s) => s.serverId ?? s.id).join(","),
     [galleryShots]
   );
-  const mine = shots.filter((s) => !s.seed); // anything the guest captured
+  const mine = useMemo(() => shots.filter((s) => isMyShot(s)), [shots, guestRev]);
   // Real match when the matcher answered. The 1-in-3 mock slice is DEV-ONLY
   // furniture — showing guests photos they're "in" that they're not in reads
   // as broken, so production renders the honest empty state instead.

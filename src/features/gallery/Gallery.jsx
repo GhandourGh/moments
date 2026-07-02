@@ -6,6 +6,7 @@ import Lightbox from '@/features/gallery/Lightbox.jsx';
 import BackLink from '@/components/layout/BackLink.jsx';
 import GalleryFilters from '@/features/gallery/GalleryFilters.jsx';
 import EmptyState from '@/components/ui/EmptyState.jsx';
+import { hasBackend } from '@/services/api/index.js';
 
 const FILTER_KEY = "fg.galleryFilter";
 const MIN_MS = 60 * 1000;
@@ -132,7 +133,11 @@ export default function Gallery() {
     try { sessionStorage.setItem(FILTER_KEY, filter); } catch { /* no-op */ }
   }, [filter]);
 
-  const visible = useMemo(() => filterShots(shots, filter), [shots, filter]);
+  const shared = useMemo(
+    () => (hasBackend() ? shots.filter((s) => !s.seed) : shots),
+    [shots]
+  );
+  const visible = useMemo(() => filterShots(shared, filter), [shared, filter]);
   const buckets = useMemo(() => bucketShots(visible, filter), [visible, filter]);
 
   // Per-bucket pulse key — newest takenAt in that bucket. When a new
@@ -157,11 +162,11 @@ export default function Gallery() {
       const next = new URLSearchParams(searchParams);
       next.delete("open");
       setSearchParams(next, { replace: true });
-    } else if (shots.some((s) => s.id === wantedId)) {
+    } else if (shared.some((s) => s.id === wantedId)) {
       // The shot exists but the current filter is hiding it — reveal it.
       setFilter("all");
     }
-  }, [searchParams, visible, shots, setSearchParams]);
+  }, [searchParams, visible, shared, setSearchParams]);
 
   return (
     <section className="page-section">

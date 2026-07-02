@@ -45,7 +45,14 @@ export function parseListParams(req: VercelRequest): ListParams {
   if (typeof q.cursor === "string" && q.cursor) {
     try {
       const parsed = JSON.parse(Buffer.from(q.cursor, "base64url").toString("utf8"));
-      if (typeof parsed.t === "string" && typeof parsed.id === "string") cursor = parsed;
+      // Strict shape check: these values are interpolated into a PostgREST
+      // .or() filter below — an unvalidated string is filter injection.
+      if (
+        typeof parsed.t === "string" && !isNaN(Date.parse(parsed.t)) &&
+        typeof parsed.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parsed.id)
+      ) {
+        cursor = parsed;
+      }
     } catch { /* bad cursor → start from the top */ }
   }
   return { since, limit, cursor };
@@ -81,14 +88,17 @@ export async function listMedia(
       `taken_at.lt.${params.cursor.t},and(taken_at.eq.${params.cursor.t},id.lt.${params.cursor.id})`
     );
   }
-  const { data: rows, error } = await query;
+  // Rows + total are independent — run them together. This endpoint is polled
+  // every 10s by every connected guest, so round trips here are the budget.
+  const [{ data: rows, error }, { count, error: cErr }] = await Promise.all([
+    query,
+    db
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId)
+      .neq("moderation_status", "blocked"),
+  ]);
   if (error) throw error;
-
-  const { count, error: cErr } = await db
-    .from(table)
-    .select("id", { count: "exact", head: true })
-    .eq("event_id", eventId)
-    .neq("moderation_status", "blocked");
   if (cErr) throw cErr;
 
   const keys = (rows ?? []).map((r: any) => r.storage_key);
@@ -102,7 +112,7 @@ export async function listMedia(
     height: r.height,
     ...(table === "videos" ? { durationMs: r.duration_ms } : {}),
     guest: { id: r.guest_id, firstName: r.guest_first_name, lastName: r.guest_last_name },
-  }));
+  })).filter((item: any) => item.url !== null);
 
   const last = rows?.[rows.length - 1] as any;
   res.status(200).json({

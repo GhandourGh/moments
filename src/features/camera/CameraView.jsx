@@ -536,12 +536,21 @@ function FlashGlyph({ mode }) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path
-              d={bolt}
+              d={mode === "auto" ? "M11 2 4 12h5l-1 8 8-12h-5l0-6z" : bolt}
               fill={mode === "off" ? "none" : "currentColor"}
               opacity={mode === "off" ? 0.85 : 1}
             />
             {mode === "off" && (
               <path d="M5 4l14 16" strokeWidth="1.6" />
+            )}
+            {mode === "auto" && (
+              <text
+                x="17.5" y="21" textAnchor="middle"
+                fontSize="9" fontWeight="700" letterSpacing="0"
+                fill="currentColor" stroke="none"
+              >
+                A
+              </text>
             )}
           </svg>
         </motion.span>

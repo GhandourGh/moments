@@ -74,23 +74,39 @@ async function request(path, { method = "GET", body, headers, signal, retryAuth 
 
 let sessionPromise = null;
 
+/** Per-event server guest id (differs from the client device uuid). */
+const serverGuestByEvent = new Map();
+
+export function getServerGuestId(eventId = getEventId()) {
+  if (!eventId) return null;
+  return serverGuestByEvent.get(eventId) ?? null;
+}
+
+function rememberServerGuest(eventId, guestId) {
+  if (eventId && guestId) serverGuestByEvent.set(eventId, guestId);
+}
+
 /** POST /api/session from the guest in localStorage. Deduped while in flight. */
 export function createSession() {
   if (!hasBackend()) return Promise.resolve({ ok: false, reason: "no-backend" });
   const guest = getGuest();
   if (!guest) return Promise.resolve({ ok: false, reason: "no-guest" });
+  const eventId = getEventId();
   if (sessionPromise) return sessionPromise;
   sessionPromise = request("/api/session", {
     method: "POST",
     retryAuth: false,
     body: {
-      event: getEventId(),
+      event: eventId,
       guestId: guest.id,
       firstName: guest.firstName,
       lastName: guest.lastName,
     },
   })
-    .then((data) => ({ ok: true, ...data }))
+    .then((data) => {
+      rememberServerGuest(eventId, data.guestId);
+      return { ok: true, ...data };
+    })
     .finally(() => { sessionPromise = null; });
   return sessionPromise;
 }
@@ -126,19 +142,32 @@ async function sha256Hex(blob) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Vercel caps request bodies ~4.5 MB — re-encode anything bigger. */
+const UPLOAD_BYTE_BUDGET = 3.5 * 1024 * 1024;
+
+async function reencode(blob, maxEdge, quality) {
+  const bitmap = await createImageBitmap(blob);
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return new Promise((r) => canvas.toBlob(r, "image/jpeg", quality));
+}
+
+/**
+ * Vercel caps request bodies ~4.5 MB — re-encode anything bigger. Two passes:
+ * the second, harsher pass exists for edge cases (dense PNG library picks)
+ * where 2560/q0.82 still busts the budget — without it the server 413s and
+ * the shot is stuck as failed forever.
+ */
 async function compressForUpload(blob) {
-  if (blob.size <= 3.5 * 1024 * 1024) return blob;
+  if (blob.size <= UPLOAD_BYTE_BUDGET) return blob;
   try {
-    const bitmap = await createImageBitmap(blob);
-    const scale = Math.min(1, 2560 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    const out = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.82));
-    return out && out.size < blob.size ? out : blob;
+    const first = await reencode(blob, 2560, 0.82);
+    if (first && first.size <= UPLOAD_BYTE_BUDGET) return first;
+    const second = await reencode(first ?? blob, 1600, 0.75);
+    return second ?? first ?? blob;
   } catch {
     return blob;
   }

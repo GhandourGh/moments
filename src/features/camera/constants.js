@@ -1,5 +1,13 @@
-export const MAX_EDGE = 1600;
-export const JPEG_QUALITY = 0.82;
+/* Quality ceiling raised 2026-07-02: 2560px long edge at q0.87 lands around
+   1–2.5 MB — still under the upload compressor's 3.5 MB re-encode threshold
+   (services/api compressForUpload), so shots keep this quality end-to-end. */
+export const MAX_EDGE = 2560;
+export const JPEG_QUALITY = 0.87;
+
+/** How long to wait for ImageCapture.takePhoto() before falling back to the
+    preview-frame canvas grab. Full-sensor photos are worth ~a second; more
+    than that reads as shutter lag. */
+export const TAKE_PHOTO_TIMEOUT_MS = 1200;
 
 export const VIDEO_MAX_MS = 60_000;
 export const VIDEO_BITRATE = 2_500_000;

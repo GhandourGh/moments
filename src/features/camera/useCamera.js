@@ -2,17 +2,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePinch } from "@use-gesture/react";
 import {
   AUDIO_BITRATE,
+  AUTO_LUMA_THRESHOLD,
   FOCUS_RING_MS,
+  PHOTO_FLASH_CYCLE,
   RETINA_FADE_MS,
   RETINA_HOLD_MS,
   TORCH_FLASH_MS,
   VIDEO_BITRATE,
+  VIDEO_FLASH_CYCLE,
   VIDEO_MAX_MS,
   VISIBLE_ZOOM_STEPS,
   ZOOM_APPLY_DEBOUNCE_MS,
   ZOOM_HUD_MS,
 } from '@/features/camera/constants.js';
-import { captureStillFromVideo, pickVideoMime, waitForVideoFrame } from '@/features/camera/capture.js';
+import {
+  captureBestStill,
+  captureStillFromVideo,
+  pickVideoMime,
+  samplePreviewLuma,
+  waitForVideoFrame,
+} from '@/features/camera/capture.js';
 import { playShutter } from '@/services/sounds.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -77,10 +86,13 @@ function buildVideoConstraints(facing, mode) {
       frameRate: { ideal: 30, max: 30 },
     };
   }
+  // Photo mode asks for a 1440p preview: `ideal` degrades gracefully on
+  // hardware that can't, and the higher source frame is what the canvas
+  // capture path encodes — directly more detail per shot.
   return {
     facingMode: facing,
-    width: { ideal: 1920 },
-    height: { ideal: 1080 },
+    width: { ideal: 2560 },
+    height: { ideal: 1440 },
   };
 }
 
@@ -183,6 +195,12 @@ export function useCamera({ videoRef, facing, mode, permissionGate, isSelfie }) 
     [hasHardwareZoom, zoomCaps],
   );
 
+  // One silent re-open when the OS yanks the track (phone call, camera app,
+  // Control Center). A second interruption surfaces the error instead of
+  // fighting the system for the sensor.
+  const [reopenNonce, setReopenNonce] = useState(0);
+  const interruptionsRef = useRef(0);
+
   // -- Stream lifecycle ----------------------------------------------------
   useEffect(() => {
     if (permissionGate) {
@@ -196,6 +214,19 @@ export function useCamera({ videoRef, facing, mode, permissionGate, isSelfie }) 
         const stream = await openStream(facing, mode);
         if (cancelled) { stopStream(stream); return; }
         streamRef.current = stream;
+        const vTrack = getVideoTrack(stream);
+        if (vTrack) {
+          vTrack.onended = () => {
+            if (cancelled) return;
+            interruptionsRef.current += 1;
+            if (interruptionsRef.current <= 1) {
+              setReopenNonce((n) => n + 1);
+            } else {
+              setReady(false);
+              setError("The camera was interrupted by another app. Close and reopen it to continue.");
+            }
+          };
+        }
         const caps = readZoomCaps(stream);
         setZoomCaps(caps);
         setZoomState(caps?.min ?? 1);
@@ -237,7 +268,23 @@ export function useCamera({ videoRef, facing, mode, permissionGate, isSelfie }) 
         streamRef.current = null;
       }
     };
-  }, [facing, mode, permissionGate, videoRef]);
+  }, [facing, mode, permissionGate, videoRef, reopenNonce]);
+
+  // Backgrounding: kill the torch (it would stay lit over the home screen on
+  // some Androids) and nudge the paused preview back to life on return.
+  useEffect(() => {
+    function onVisibility() {
+      if (document.hidden) {
+        setTorch(streamRef.current, false).catch(() => {});
+      } else {
+        const video = videoRef.current;
+        if (video?.srcObject && video.paused) video.play().catch(() => {});
+        if (torchOn) setTorch(streamRef.current, true).catch(() => {});
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [videoRef, torchOn]);
 
   // Reset torch on facing change.
   useEffect(() => { setTorchOn(false); }, [facing]);
@@ -308,9 +355,20 @@ export function useCamera({ videoRef, facing, mode, permissionGate, isSelfie }) 
   }, [videoRef]);
 
   // -- Flash mode cycling -------------------------------------------------
+  // Photos cycle off → on → auto; video has no auto (light must be decided
+  // up front, not per-frame).
   const cycleFlash = useCallback(() => {
-    setFlashMode((m) => (m === "off" ? "on" : "off"));
-  }, []);
+    const cycle = mode === "video" ? VIDEO_FLASH_CYCLE : PHOTO_FLASH_CYCLE;
+    setFlashMode((m) => {
+      const i = cycle.indexOf(m);
+      return cycle[(i + 1) % cycle.length];
+    });
+  }, [mode]);
+
+  // "auto" has no meaning while recording — drop to off when entering video.
+  useEffect(() => {
+    if (mode === "video") setFlashMode((m) => (m === "auto" ? "off" : m));
+  }, [mode]);
 
   const toggleTorch = useCallback(() => setTorchOn((v) => !v), []);
 
@@ -322,8 +380,15 @@ export function useCamera({ videoRef, facing, mode, permissionGate, isSelfie }) 
     captureLockRef.current = true;
     setCapturing(true);
 
-    const useSelfieFlash = isSelfie && flashMode === "on";
-    const useTorchFlash = !isSelfie && torchSupported && flashMode === "on";
+    // "auto" fires the flash only when the preview reads dark. An unreadable
+    // sample (null) counts as bright — never surprise-flash the room.
+    let wantsFlash = flashMode === "on";
+    if (flashMode === "auto") {
+      const luma = samplePreviewLuma(video);
+      wantsFlash = luma != null && luma < AUTO_LUMA_THRESHOLD;
+    }
+    const useSelfieFlash = isSelfie && wantsFlash;
+    const useTorchFlash = !isSelfie && torchSupported && wantsFlash;
 
     try {
       playShutter();
@@ -355,7 +420,11 @@ export function useCamera({ videoRef, facing, mode, permissionGate, isSelfie }) 
         return;
       }
 
-      const blob = await captureStillFromVideo(video);
+      // No-flash path: try the full-sensor ImageCapture photo (falls back to
+      // the preview grab internally). Flash paths stay on the preview grab —
+      // their exposure must land inside the lit window, which takePhoto's
+      // decoupled timing can't guarantee.
+      const blob = await captureBestStill(video, stream);
       if (blob) setPending({ blob, url: URL.createObjectURL(blob) });
     } catch (err) {
       console.error("Capture failed:", err);
