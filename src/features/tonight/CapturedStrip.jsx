@@ -8,6 +8,7 @@ import {
   animate,
 } from "framer-motion";
 import TimeBadge from '@/components/ui/TimeBadge.jsx';
+import PhotoAwaitPlaceholder from '@/components/ui/PhotoAwaitPlaceholder.jsx';
 import Lightbox from '@/features/gallery/Lightbox.jsx';
 
 const SCROLL_PX_PER_SEC = 32;
@@ -270,7 +271,7 @@ export default function CapturedStrip({ shots }) {
               {s.url ? (
                 <img src={s.url} alt="" loading="lazy" draggable={false} />
               ) : (
-                <span className="ph-tile-loading" aria-hidden />
+                <PhotoAwaitPlaceholder variant="strip" />
               )}
               <TimeBadge takenAt={s.takenAt} />
             </button>

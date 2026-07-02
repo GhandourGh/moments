@@ -1,5 +1,6 @@
 import React from "react";
 import { useEventContent } from '@/state/eventContent.js';
+import PhotoAwaitPlaceholder from '@/components/ui/PhotoAwaitPlaceholder.jsx';
 
 /**
  * Branded keepsake frame — couple initials + wedding date under the photo.
@@ -35,7 +36,7 @@ export default function MemoryCard({
         {shot.url ? (
           <img src={shot.url} alt="" draggable={false} loading="lazy" />
         ) : (
-          <span className="ph-tile-loading" aria-hidden />
+          <PhotoAwaitPlaceholder variant="frame" />
         )}
       </div>
       <footer className="mem-card-foot">

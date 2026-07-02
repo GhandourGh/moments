@@ -13,6 +13,7 @@ import {
 } from '@/services/api/index.js';
 import ContentEditor, { EMPTY_CONTENT, cleanContent } from '@/features/host/ContentEditor.jsx';
 import { DEFAULT_FEATURES } from '@/config/eventDefaults.js';
+import { removeShotsFromCache } from '@/state/shotsCache.js';
 
 import { ADMIN_PASSCODE_KEY } from '@/config/admin.js';
 const LIST_POLL_MS = 15_000;
@@ -625,6 +626,7 @@ function PhotosPanel({ event, passcode, onPhotoDeleted }) {
     setActionError("");
     try {
       await adminDeletePhoto(event.id, photo.id, passcode);
+      removeShotsFromCache(event.id, [photo.id]);
       setPhotos((ps) => ps.filter((p) => p.id !== photo.id));
       setTotal((t) => Math.max(0, t - 1));
       onPhotoDeleted();

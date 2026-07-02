@@ -1,18 +1,17 @@
 import { getEventContent } from '@/state/eventContent.js';
 
-/** Offscreen render target — used when compositing branded downloads. */
+/** Portrait keepsake — 2:3, sized for phone saves and prints. */
 export const MEMORY_CARD_EXPORT = {
   width: 1200,
-  height: 1500,
+  height: 1800,
   photoAspect: 4 / 5,
 };
 
 const W = MEMORY_CARD_EXPORT.width;
 const H = MEMORY_CARD_EXPORT.height;
-const PAD_X = 36;
-const PAD_TOP = 36;
-const PAD_BOTTOM = 48;
-const FOOT_H = 148;
+const SIDE = 48;
+const PHOTO_RADIUS = 18;
+const PHOTO_GAP = 32;
 
 /** Filename for branded keepsake download. */
 export function memoryCardDownloadName(shotId) {
@@ -30,22 +29,10 @@ export function plainPhotoDownloadName(shotId) {
 }
 
 /**
- * Save a blob to the device. Uses the native share sheet on iOS (where
- * programmatic <a download> is ignored) and falls back to anchor download.
+ * Save a blob straight to the device (anchor download).
+ * Share is handled separately in the lightbox — this always downloads.
  */
 export async function triggerDownload(blob, filename) {
-  const type = blob.type || "image/jpeg";
-  const file = new File([blob], filename, { type });
-
-  if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: "Save Moment" });
-      return;
-    } catch (err) {
-      if (err?.name === "AbortError") return;
-    }
-  }
-
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -55,6 +42,16 @@ export async function triggerDownload(blob, filename) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 8000);
+}
+
+/** Fetch a gallery asset as a blob (same-origin or signed URL). */
+export async function fetchAssetBlob(src) {
+  if (!src) throw new Error("No URL");
+  const res = await fetch(src, {
+    credentials: src.startsWith("/") ? "include" : "omit",
+  });
+  if (!res.ok) throw new Error(`Could not fetch (${res.status})`);
+  return res.blob();
 }
 
 function loadImageElement(src) {
@@ -99,12 +96,26 @@ async function loadImageForExport(src) {
 async function ensureFonts() {
   if (document.fonts?.load) {
     await Promise.all([
-      document.fonts.load('500 52px "Cormorant Garamond"'),
-      document.fonts.load('600 22px "Source Sans 3"'),
-      document.fonts.load('600 18px "Source Sans 3"'),
+      document.fonts.load('500 56px "Cormorant Garamond"'),
+      document.fonts.load('600 24px "Source Sans 3"'),
     ]).catch(() => {});
   }
   await document.fonts?.ready;
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.lineTo(x + w - rad, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+  ctx.lineTo(x + w, y + h - rad);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+  ctx.lineTo(x + rad, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rad);
+  ctx.lineTo(x, y + rad);
+  ctx.quadraticCurveTo(x, y, x + rad, y);
+  ctx.closePath();
 }
 
 function drawCover(ctx, img, x, y, w, h) {
@@ -128,6 +139,15 @@ function drawCover(ctx, img, x, y, w, h) {
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
 
+function layoutCard() {
+  const photoW = W - SIDE * 2;
+  const photoH = photoW * (5 / 4);
+  const photoX = SIDE;
+  const photoY = SIDE;
+  const footTop = photoY + photoH + PHOTO_GAP;
+  return { photoX, photoY, photoW, photoH, footTop };
+}
+
 /**
  * Rasterize the memory card frame + photo to a JPEG Blob (matches MemoryCard export layout).
  */
@@ -141,66 +161,64 @@ export async function composeMemoryCardBlob(imageUrl) {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
 
-  const innerW = W - PAD_X * 2;
-  let photoW = innerW;
-  let photoH = photoW * (5 / 4);
-  const maxPhotoH = H - PAD_TOP - PAD_BOTTOM - FOOT_H;
-  if (photoH > maxPhotoH) {
-    photoH = maxPhotoH;
-    photoW = photoH * (4 / 5);
-  }
-  const photoX = (W - photoW) / 2;
-  const photoY = PAD_TOP;
+  const { photoX, photoY, photoW, photoH, footTop } = layoutCard();
+  const cx = W / 2;
+  const { initials, dateDisplay } = getEventContent();
 
   const bg = ctx.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, "#fffefb");
-  bg.addColorStop(1, "#faf6ee");
+  bg.addColorStop(1, "#f7f2e8");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  ctx.strokeStyle = "rgba(180, 138, 74, 0.22)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(1, 1, W - 2, H - 2);
+  ctx.save();
+  ctx.shadowColor = "rgba(28, 26, 23, 0.14)";
+  ctx.shadowBlur = 48;
+  ctx.shadowOffsetY = 16;
+  roundRectPath(ctx, photoX, photoY, photoW, photoH, PHOTO_RADIUS);
+  ctx.fillStyle = "#ebe6dc";
+  ctx.fill();
+  ctx.restore();
 
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(photoX, photoY, photoW, photoH);
+  roundRectPath(ctx, photoX, photoY, photoW, photoH, PHOTO_RADIUS);
   ctx.clip();
   drawCover(ctx, img, photoX, photoY, photoW, photoH);
   ctx.restore();
 
-  ctx.strokeStyle = "rgba(28, 26, 23, 0.06)";
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.08)";
   ctx.lineWidth = 2;
-  ctx.strokeRect(photoX, photoY, photoW, photoH);
-
-  const footTop = photoY + photoH + 28;
-  const cx = W / 2;
-  const { initials, dateDisplay } = getEventContent();
+  roundRectPath(ctx, photoX + 1, photoY + 1, photoW - 2, photoH - 2, PHOTO_RADIUS - 1);
+  ctx.stroke();
 
   ctx.fillStyle = "#b48a4a";
-  ctx.globalAlpha = 0.65;
-  ctx.fillRect(cx - 28, footTop, 56, 1);
+  ctx.globalAlpha = 0.7;
+  ctx.fillRect(cx - 32, footTop, 64, 2);
   ctx.globalAlpha = 1;
 
   if (initials?.trim()) {
     ctx.fillStyle = "#1c1a17";
-    ctx.font = '500 52px "Cormorant Garamond", Georgia, serif';
+    ctx.font = '500 56px "Cormorant Garamond", Georgia, serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText(initials, cx, footTop + 58);
+    ctx.fillText(initials, cx, footTop + 64);
   }
 
   if (dateDisplay?.trim()) {
-    ctx.font = '600 22px "Source Sans 3", system-ui, sans-serif';
+    ctx.font = '600 24px "Source Sans 3", system-ui, sans-serif';
     ctx.fillStyle = "#524c44";
-    ctx.fillText(dateDisplay.toUpperCase(), cx, footTop + (initials?.trim() ? 96 : 58));
+    ctx.fillText(
+      dateDisplay.toUpperCase(),
+      cx,
+      footTop + (initials?.trim() ? 108 : 64),
+    );
   }
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Export failed"))),
       "image/jpeg",
-      0.92,
+      0.93,
     );
   });
 }

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   composeMemoryCardBlob,
+  fetchAssetBlob,
   memoryCardDownloadName,
   photoExportUrl,
   plainPhotoDownloadName,
@@ -54,6 +55,7 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
   // Smooth-close: render the overlay with an exiting class, then unmount.
   const [closing, setClosing] = useState(false);
   const [cardBusy, setCardBusy] = useState(false);
+  const [originalBusy, setOriginalBusy] = useState(false);
   const requestClose = useCallback(() => {
     if (closing) return;
     setClosing(true);
@@ -307,9 +309,31 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
       const blob = await composeMemoryCardBlob(exportSrc);
       await triggerDownload(blob, keepsakeName);
     } catch {
-      show("Couldn't save this moment — try the Original button", { duration: 5000 });
+      show("Couldn't save this moment — try again", { duration: 5000 });
     } finally {
       setCardBusy(false);
+    }
+  }
+
+  async function downloadOriginal() {
+    if (originalBusy) return;
+    const video = current?.mediaType === "video";
+    const src = !video && current?.serverId
+      ? photoExportUrl(getEventId(), current.serverId)
+      : current?.url;
+    if (!src) {
+      show("Still loading — try again in a moment", { duration: 4000 });
+      return;
+    }
+    setOriginalBusy(true);
+    try {
+      const blob = await fetchAssetBlob(src);
+      const name = video ? videoDownloadName(current) : plainName;
+      await triggerDownload(blob, name);
+    } catch {
+      show("Couldn't download — try again", { duration: 5000 });
+    } finally {
+      setOriginalBusy(false);
     }
   }
 
@@ -472,15 +496,16 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
               <span>{shareBusy ? "Sharing…" : "Share"}</span>
             </button>
           )}
-          <a
+          <button
+            type="button"
             className="lb-download"
-            href={current.url}
-            download={isVideo ? videoDownloadName(current) : plainName}
+            onClick={downloadOriginal}
+            disabled={originalBusy || !(current.url || current.serverId)}
             aria-label={isVideo ? "Download original video" : "Download original photo"}
           >
             <DownloadIcon />
-            <span>Original</span>
-          </a>
+            <span>{originalBusy ? "Downloading…" : "Original"}</span>
+          </button>
           {!isVideo && (
             <button
               type="button"

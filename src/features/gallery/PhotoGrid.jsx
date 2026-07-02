@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { retry } from '@/services/storage/uploadQueue.js';
+import PhotoAwaitPlaceholder from '@/components/ui/PhotoAwaitPlaceholder.jsx';
 
 /**
  * Square photo grid (iPhone Photos style). Tap a tile → `onOpen(index)`.
@@ -34,7 +35,7 @@ export default function PhotoGrid({ shots, onOpen }) {
           ) : s.url ? (
             <TileImage src={s.url} />
           ) : (
-            <span className="ph-tile-loading" aria-hidden />
+            <PhotoAwaitPlaceholder variant="tile" />
           )}
           <StatusDot shot={s} />
         </button>
@@ -45,7 +46,7 @@ export default function PhotoGrid({ shots, onOpen }) {
 
 function TileImage({ src }) {
   const [broken, setBroken] = useState(false);
-  if (!src || broken) return <span className="ph-tile-loading" aria-hidden />;
+  if (!src || broken) return <PhotoAwaitPlaceholder variant="tile" />;
   return (
     <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} />
   );

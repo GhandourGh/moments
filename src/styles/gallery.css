@@ -70,6 +70,72 @@
 .ph-tile:active { transform: scale(0.96); }
 .ph-tile img,
 .ph-tile video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+
+/* Event-branded placeholder while signed URLs resolve. */
+.ph-await {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  text-align: center;
+  background:
+    radial-gradient(ellipse 85% 75% at 50% 30%, oklch(97% 0.02 48) 0%, transparent 72%),
+    linear-gradient(168deg, var(--paper) 0%, var(--paper-2) 55%, oklch(92% 0.018 42) 100%);
+  color: var(--ink-mute);
+  position: relative;
+  overflow: hidden;
+}
+.ph-await::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 42%,
+    oklch(99% 0.01 50 / 0.55) 50%,
+    transparent 58%
+  );
+  background-size: 220% 100%;
+  animation: ph-await-shimmer 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ph-await-shimmer {
+  0%   { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+.ph-await-mark {
+  position: relative;
+  z-index: 1;
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--brand-deep);
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.ph-await-date {
+  position: relative;
+  z-index: 1;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+.ph-await--tile .ph-await-mark { font-size: clamp(17px, 4.8vw, 22px); }
+.ph-await--strip .ph-await-mark { font-size: clamp(21px, 5.5vw, 28px); }
+.ph-await--frame .ph-await-mark {
+  font-size: clamp(19px, 5vw, 26px);
+  opacity: 0.88;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ph-await::after { animation: none; opacity: 0; }
+}
+
 .ph-tile-loading {
   display: block;
   width: 100%;

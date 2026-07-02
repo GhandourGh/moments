@@ -4,13 +4,14 @@ import { deleteShot, listShots } from '@/services/storage/photoStore.js';
 import { enqueue, subscribe, tick } from '@/services/storage/uploadQueue.js';
 import { createSession, fetchShotsSince, getEventId, getServerGuestId, hasBackend } from '@/services/api/index.js';
 import { getGuest, subscribeGuest } from '@/state/guest.js';
-import { preserveShotUrls, readShotsCache, writeShotsCache } from '@/state/shotsCache.js';
+import { preserveShotUrls, readSessionShots, writeShotsCache, clearLegacyShotsCache } from '@/state/shotsCache.js';
 
 const POLL_MS = 10_000;
 
 function initialShots() {
   if (!hasBackend()) return SEED_SHOTS;
-  return readShotsCache(getEventId());
+  // Never paint from cache on boot — server reconcile is the source of truth.
+  return [];
 }
 
 const PhotosContext = createContext(null);
@@ -127,37 +128,41 @@ export function PhotosProvider({ children }) {
 
   const bootstrapGallery = useCallback(async (isCancelled) => {
     const eventId = getEventId();
-    let merged = [];
+    clearLegacyShotsCache(eventId);
 
-    const persisted = await listShots(eventId);
+    const [persisted, serverRes] = await Promise.all([
+      listShots(eventId),
+      (async () => {
+        if (!hasBackend()) return { ok: false, shots: [] };
+        if (getGuest()) await createSession().catch(() => {});
+        if (isCancelled()) return { ok: false, shots: [] };
+        try {
+          return await fetchShotsSince(0);
+        } catch {
+          return { ok: false, shots: [] };
+        }
+      })(),
+    ]);
     if (isCancelled()) return null;
 
-    merged = persisted
+    let merged = persisted
       .sort((a, b) => b.takenAt - a.takenAt)
       .map((r) => rehydrateRecord(r, trackUrl))
       .filter(Boolean);
 
-    if (hasBackend()) {
-      if (getGuest()) await createSession().catch(() => {});
-      if (isCancelled()) return null;
-      try {
-        const res = await fetchShotsSince(0);
-        if (res.ok && Array.isArray(res.shots)) {
-          merged = reconcileServerShots(merged, res.shots);
-        }
-      } catch { /* poll loop will retry */ }
+    if (serverRes.ok && Array.isArray(serverRes.shots)) {
+      merged = reconcileServerShots(merged, serverRes.shots);
     }
 
     if (!hasBackend() && !merged.length) return SEED_SHOTS;
     return merged;
   }, [trackUrl]);
 
-  const applyShots = useCallback((merged, { keepPreviousUrls = false } = {}) => {
-    setShots((prev) => {
-      const next = keepPreviousUrls ? preserveShotUrls(prev, merged) : merged;
-      writeShotsCache(getEventId(), next);
-      return next;
-    });
+  const applyShots = useCallback((merged) => {
+    const urlHints = readSessionShots(getEventId());
+    const next = preserveShotUrls(urlHints, merged);
+    setShots(next);
+    writeShotsCache(getEventId(), next);
   }, []);
 
   // On mount (and when the guest registers after the welcome modal), rebuild
@@ -168,7 +173,7 @@ export function PhotosProvider({ children }) {
     (async () => {
       const merged = await bootstrapGallery(() => cancelled);
       if (cancelled || merged == null) return;
-      applyShots(merged, { keepPreviousUrls: true });
+      applyShots(merged);
       setHydrated(true);
     })();
     return () => { cancelled = true; };
@@ -182,7 +187,7 @@ export function PhotosProvider({ children }) {
       (async () => {
         const merged = await bootstrapGallery(() => cancelled);
         if (cancelled || merged == null) return;
-        applyShots(merged, { keepPreviousUrls: true });
+        applyShots(merged);
         tick();
       })();
     });
@@ -263,7 +268,9 @@ export function PhotosProvider({ children }) {
             const merged = fullSync
               ? reconcileServerShots(prev, res.shots)
               : mergeServerShots(prev, res.shots);
-            const next = preserveShotUrls(prev, merged);
+            const next = fullSync
+              ? merged
+              : preserveShotUrls(prev, merged);
             writeShotsCache(getEventId(), next);
             return next;
           });
@@ -303,7 +310,7 @@ export function PhotosProvider({ children }) {
     });
   }, [untrackUrl]);
 
-  const galleryHasShots = shots.some((s) => !s.seed && s.mediaType !== "video");
+  const galleryHasShots = hydrated && shots.some((s) => !s.seed && s.mediaType !== "video");
 
   return (
     <PhotosContext.Provider value={{ shots, hydrated, galleryHasShots, addShot, removeShot }}>

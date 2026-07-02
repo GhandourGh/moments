@@ -10,6 +10,7 @@ import {
   fetchEvent,
 } from '@/services/api/index.js';
 import { ADMIN_PASSCODE_KEY } from '@/config/admin.js';
+import { removeShotsFromCache } from '@/state/shotsCache.js';
 
 const TABS = [
   { id: "cover", label: "Cover photo" },
@@ -329,6 +330,7 @@ function PhotoGallery({ event, passcode, onPhotoDeleted }) {
     setActionError("");
     try {
       await adminDeletePhoto(event.id, photo.id, passcode);
+      removeShotsFromCache(event.id, [photo.id]);
       setPhotos((ps) => ps.filter((p) => p.id !== photo.id));
       setTotal((t) => Math.max(0, t - 1));
       if (preview?.id === photo.id) setPreview(null);
