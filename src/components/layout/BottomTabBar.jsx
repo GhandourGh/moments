@@ -8,7 +8,7 @@ import { useEventContent } from '@/state/eventContent.js';
  */
 export default function BottomTabBar({ onCapture }) {
   const { features } = useEventContent();
-  const showStory = features.storyNav !== false && features.story !== false;
+  const showStory = features.storyNav !== false;
 
   return (
     <nav

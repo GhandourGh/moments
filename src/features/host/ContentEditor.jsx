@@ -182,15 +182,25 @@ export default function ContentEditor({
         </fieldset>
       )}
 
+      <fieldset className="host-fieldset">
+        <legend>Story page</legend>
+        <p className="host-content-note">
+          The Story tab stays visible — customize the headline, or turn off chapters for a mystery teaser.
+        </p>
+        <Field label="Story page title" value={c.storyTitle}
+          placeholder="Still a mystery" maxLength={80}
+          onChange={(e) => set({ storyTitle: e.target.value })} />
+        <Field label="Story intro line" value={c.storyLede}
+          placeholder="The hosts locked this page. Ask nicely at the bar." maxLength={160}
+          onChange={(e) => set({ storyLede: e.target.value })} />
+      </fieldset>
+
       {c.features.story !== false && (
         <fieldset className="host-fieldset">
-          <legend>Story page</legend>
-          <Field label="Story page title" value={c.storyTitle}
-            placeholder="How we got here" maxLength={80}
-            onChange={(e) => set({ storyTitle: e.target.value })} />
-          <Field label="Story intro line" value={c.storyLede}
-            placeholder="A short line under the story title" maxLength={160}
-            onChange={(e) => set({ storyLede: e.target.value })} />
+          <legend>Story chapters</legend>
+          <p className="host-content-note">
+            Optional — leave empty to show guests a mystery teaser on the Story page.
+          </p>
           {(c.story ?? []).map((chap, i) => (
             <div className="host-chapter" key={i}>
               <div className="host-chapter-head">

@@ -45,7 +45,7 @@ export const FEATURE_FIELDS = [
   { key: "memoryRow", label: "Memory cards row", hint: "keepsake strip under captures" },
   { key: "navbarInitials", label: "Navbar initials", hint: "center mark in the top bar" },
   { key: "storyNav", label: "Story tab", hint: "Story page link in navigation" },
-  { key: "story", label: "Story page content", hint: "when off, /story redirects home" },
+  { key: "story", label: "Story chapters", hint: "when off, guests see a playful mystery page" },
 ];
 
 export function mergeFeatures(raw) {

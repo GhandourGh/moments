@@ -5,7 +5,7 @@ import { useEventContent } from '@/state/eventContent.js';
 export default function Navbar() {
   const { initials, features } = useEventContent();
   const showInitials = features.navbarInitials !== false && Boolean(initials?.trim());
-  const showStory = features.storyNav !== false && features.story !== false;
+  const showStory = features.storyNav !== false;
   return (
     <header className={`nav${showInitials ? "" : " nav--no-initials"}`}>
       <div className="nav-inner">

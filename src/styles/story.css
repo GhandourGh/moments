@@ -96,6 +96,109 @@
   color: var(--ink-mute);
 }
 
+/* Mystery teaser — shown when chapters are off or empty */
+.story-mystery {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+  padding: 12px 0 8px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.story-mystery-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--brand-deep);
+  margin: 0;
+}
+.story-mystery-seal {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--brand-tint-strong);
+  background: var(--brand-tint-soft);
+  color: var(--brand-deep);
+  font-family: "Cormorant Garamond", serif;
+  font-size: 42px;
+  font-weight: 500;
+  line-height: 1;
+}
+.story-mystery-punchline {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  font-style: italic;
+  font-size: clamp(22px, 4vw, 30px);
+  line-height: 1.25;
+  color: var(--ink);
+  margin: 0;
+  text-wrap: balance;
+}
+.story-mystery-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.story-mystery-body p {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+.story-mystery-redactions {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.story-mystery-redactions li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+}
+.story-mystery-redact-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  white-space: nowrap;
+}
+.story-mystery-redact-bar {
+  display: block;
+  height: 10px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--ink) 0,
+    var(--ink) 8px,
+    transparent 8px,
+    transparent 14px
+  );
+  opacity: 0.18;
+}
+.story-mystery-note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-mute);
+  line-height: 1.5;
+  font-style: italic;
+}
+
 @media (max-width: 720px) {
   .story { gap: 56px; }
   .chap {
