@@ -31,8 +31,10 @@ export default function PhotoGrid({ shots, onOpen }) {
                 <PlayGlyph />
               </span>
             </>
-          ) : (
+          ) : s.url ? (
             <img src={s.url} alt="" loading="lazy" />
+          ) : (
+            <span className="ph-tile-loading" aria-hidden />
           )}
           <StatusDot shot={s} />
         </button>

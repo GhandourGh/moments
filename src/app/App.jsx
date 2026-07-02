@@ -8,14 +8,22 @@ import Me from '@/features/me/Me.jsx';
 import Story from '@/features/story/Story.jsx';
 import NotFound from '@/features/not-found/NotFound.jsx';
 
-// Host tools are admin-only and pull in the QR library — keep them out of
-// the guest bundle. Also outside <Layout/> so hosts skip the welcome gate.
+// Host tools and admin dashboard are passcode-protected — lazy-loaded.
 const Host = lazy(() => import('@/features/host/Host.jsx'));
+const Admin = lazy(() => import('@/features/admin/Admin.jsx'));
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route
+          path="/admin"
+          element={
+            <Suspense fallback={null}>
+              <Admin />
+            </Suspense>
+          }
+        />
         <Route
           path="/host"
           element={
@@ -35,8 +43,8 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Route>
         </Route>
-        {/* The domain root is the admin entrance. */}
-        <Route path="/" element={<Navigate to="/host" replace />} />
+        {/* The domain root is the admin dashboard. */}
+        <Route path="/" element={<Navigate to="/admin" replace />} />
         <Route path="*" element={<NotFound standalone />} />
       </Routes>
     </BrowserRouter>

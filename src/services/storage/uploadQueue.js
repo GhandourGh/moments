@@ -12,7 +12,7 @@
  * drains the union of IDB + Map, deduped by id.
  */
 
-import { hasBackend, getEventId, uploadShot, uploadVideo, createSession } from '@/services/api/index.js';
+import { hasBackend, getEventId, uploadShot, uploadVideo, createSession, fetchShotsSince } from '@/services/api/index.js';
 import { subscribe as subscribeActiveEvent } from '@/state/activeEvent.js';
 import { subscribeGuest, getGuest } from '@/state/guest.js';
 import { moderatePhotoLocal } from '@/services/moderation/index.js';
@@ -148,6 +148,19 @@ async function uploadOne(rec) {
       serverUrl: result.url,
       ...(result.url ? { url: result.url } : {}),
     });
+    // If the upload response omitted a signed URL, pull one from the gallery API.
+    if (!result.url) {
+      fetchShotsSince(0)
+        .then((res) => {
+          if (!res.ok) return;
+          const match = res.shots?.find((s) => s.id === result.id);
+          if (match?.url) {
+            saveRecord({ ...next, serverUrl: match.url });
+            emit(rec.id, { serverUrl: match.url, url: match.url });
+          }
+        })
+        .catch(() => {});
+    }
     return true;
   } catch {
     const attempts = (rec.attempts ?? 0) + 1;

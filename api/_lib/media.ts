@@ -92,12 +92,7 @@ export async function listMedia(
   if (cErr) throw cErr;
 
   const keys = (rows ?? []).map((r: any) => r.storage_key);
-  let urls: Record<string, string> = {};
-  if (keys.length) {
-    const { data: signed, error: sErr } = await db.storage.from(bucket).createSignedUrls(keys, 86_400);
-    if (sErr) throw sErr;
-    for (const s of signed ?? []) if (s.signedUrl && s.path) urls[s.path] = s.signedUrl;
-  }
+  const urls = await signStorageUrls(bucket, keys);
 
   const items = (rows ?? []).map((r: any) => ({
     id: r.id,
@@ -136,4 +131,33 @@ export async function signedUrlFor(bucket: string, storageKey: string): Promise<
   const { data, error } = await admin().storage.from(bucket).createSignedUrl(storageKey, 86_400);
   if (error || !data?.signedUrl) return null;
   return data.signedUrl;
+}
+
+/** Batch-sign storage keys; falls back to per-key signing when batch entries fail. */
+export async function signStorageUrls(bucket: string, keys: string[]): Promise<Record<string, string>> {
+  const urls: Record<string, string> = {};
+  const unique = [...new Set(keys.filter(Boolean))];
+  if (!unique.length) return urls;
+
+  const { data: signed, error: sErr } = await admin().storage.from(bucket).createSignedUrls(unique, 86_400);
+  if (!sErr && signed?.length) {
+    for (let i = 0; i < unique.length; i++) {
+      const key = unique[i];
+      const entry = signed[i];
+      if (!entry?.signedUrl) continue;
+      urls[key] = entry.signedUrl;
+      if (entry.path) {
+        const norm = entry.path.replace(/^\/+/, "");
+        urls[norm] = entry.signedUrl;
+      }
+    }
+  }
+
+  await Promise.all(unique.map(async (key) => {
+    if (urls[key]) return;
+    const url = await signedUrlFor(bucket, key);
+    if (url) urls[key] = url;
+  }));
+
+  return urls;
 }

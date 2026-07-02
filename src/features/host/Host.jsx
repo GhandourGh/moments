@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import QRCode from "qrcode";
 import {
   adminCreateEvent,
@@ -11,7 +12,7 @@ import {
 } from '@/services/api/index.js';
 import ContentEditor, { EMPTY_CONTENT, cleanContent } from '@/features/host/ContentEditor.jsx';
 
-const PASSCODE_KEY = "moment.host.passcode.v1";
+import { ADMIN_PASSCODE_KEY } from '@/config/admin.js';
 const LIST_POLL_MS = 15_000;
 
 /**
@@ -23,7 +24,7 @@ const LIST_POLL_MS = 15_000;
  */
 export default function Host() {
   const [passcode, setPasscode] = useState(() => {
-    try { return sessionStorage.getItem(PASSCODE_KEY) ?? ""; } catch { return ""; }
+    try { return sessionStorage.getItem(ADMIN_PASSCODE_KEY) ?? ""; } catch { return ""; }
   });
   const [unlocked, setUnlocked] = useState(false);
   const [events, setEvents] = useState([]);
@@ -46,7 +47,7 @@ export default function Host() {
     setError("");
     try {
       await refresh(passcode);
-      try { sessionStorage.setItem(PASSCODE_KEY, passcode); } catch { /* private mode */ }
+      try { sessionStorage.setItem(ADMIN_PASSCODE_KEY, passcode); } catch { /* private mode */ }
       setUnlocked(true);
     } catch (err) {
       setError(err.status === 401 ? "Wrong passcode." : "Couldn't reach the server.");
@@ -95,10 +96,15 @@ export default function Host() {
   return (
     <section className="page-section host">
       <header className="section-head">
-        <h1 className="section-title">Host tools</h1>
-        <p className="section-lede">
-          Create an event and share its link — guests need nothing but the URL.
-        </p>
+        <div className="host-head-row">
+          <div>
+            <h1 className="section-title">Host tools</h1>
+            <p className="section-lede">
+              Create an event and share its link — guests need nothing but the URL.
+            </p>
+          </div>
+          <Link to="/admin" className="btn btn-text">Photo dashboard</Link>
+        </div>
       </header>
 
       {!unlocked ? (

@@ -1,5 +1,12 @@
 /* /host — host tools. Reuses .wm-field/.wm-input from modals.css. */
 
+.host-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .host {
   max-width: 560px;
   margin: 0 auto;

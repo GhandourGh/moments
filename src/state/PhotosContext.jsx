@@ -32,6 +32,11 @@ function rehydrateRecord(r, trackUrl) {
       trackUrl(url);
       return { id: r.id, url, ...base };
     }
+    // Synced on server but no local blob / cached URL — keep the row so the
+    // gallery poll can attach a signed URL after refresh.
+    if (serverId) {
+      return { id: serverId, url: "", ...base };
+    }
     return null;
   } catch {
     return null;
@@ -41,7 +46,7 @@ function rehydrateRecord(r, trackUrl) {
 function mergeServerShots(prev, serverShots) {
   const known = new Set(prev.map((s) => s.serverId || s.id));
   const fresh = serverShots
-    .filter((r) => !known.has(r.id))
+    .filter((r) => r.url && !known.has(r.id))
     .map((r) => ({
       id: r.id,
       serverId: r.id,
@@ -55,10 +60,10 @@ function mergeServerShots(prev, serverShots) {
     }));
   const byServerId = new Map(serverShots.map((r) => [r.id, r]));
   let next = prev.map((s) => {
-    if (s.url && s.url !== "") return s;
     if (!s.serverId) return s;
     const echo = byServerId.get(s.serverId);
-    return echo ? { ...s, url: echo.url, serverUrl: echo.url } : s;
+    if (!echo?.url) return s;
+    return { ...s, url: echo.url, serverUrl: echo.url };
   });
   if (fresh.length) {
     next = [...fresh, ...next].sort((a, b) => b.takenAt - a.takenAt);
@@ -85,6 +90,8 @@ export function PhotosProvider({ children }) {
   const [shots, setShots] = useState(hasBackend() ? [] : SEED_SHOTS);
   const [hydrated, setHydrated] = useState(false);
   const blobUrls = useRef(new Set());
+  const shotsRef = useRef(shots);
+  shotsRef.current = shots;
 
   const trackUrl = useCallback((url) => {
     if (url?.startsWith("blob:")) blobUrls.current.add(url);
@@ -106,12 +113,12 @@ export function PhotosProvider({ children }) {
       .map((r) => rehydrateRecord(r, trackUrl))
       .filter(Boolean);
 
-    if (hasBackend() && getGuest()) {
-      await createSession().catch(() => {});
+    if (hasBackend()) {
+      if (getGuest()) await createSession().catch(() => {});
       if (isCancelled()) return null;
       try {
         const res = await fetchShotsSince(0);
-        if (res.ok && Array.isArray(res.shots) && res.shots.length) {
+        if (res.ok && Array.isArray(res.shots)) {
           merged = mergeServerShots(merged, res.shots);
         }
       } catch { /* poll loop will retry */ }
@@ -199,11 +206,15 @@ export function PhotosProvider({ children }) {
         return;
       }
       try {
-        const res = await fetchShotsSince(since);
+        await createSession().catch(() => {});
+        const needsUrls = shotsRef.current.some((s) => s.serverId && !s.url);
+        const res = await fetchShotsSince(needsUrls ? 0 : since);
         if (res.ok && Array.isArray(res.shots) && res.shots.length) {
           setShots((prev) => mergeServerShots(prev, res.shots));
-          const maxTakenAt = Math.max(...res.shots.map((r) => r.takenAt));
-          since = Math.max(since, maxTakenAt - 60_000);
+          if (!needsUrls) {
+            const maxTakenAt = Math.max(...res.shots.map((r) => r.takenAt));
+            since = Math.max(since, maxTakenAt - 60_000);
+          }
         }
       } catch { /* one bad poll never breaks the loop */ }
       if (!cancelled) timer = setTimeout(poll, POLL_MS);

@@ -70,6 +70,17 @@
 .ph-tile:active { transform: scale(0.96); }
 .ph-tile img,
 .ph-tile video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+.ph-tile-loading {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(110deg, #1a1a1a 8%, #2a2a2a 18%, #1a1a1a 33%);
+  background-size: 200% 100%;
+  animation: ph-shimmer 1.4s ease infinite;
+}
+@keyframes ph-shimmer {
+  to { background-position-x: -200%; }
+}
 
 /* Video tile play indicator — a soft glass chip in the bottom-left so the
    guest can tell at a glance which tiles are videos. */

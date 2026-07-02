@@ -90,9 +90,10 @@ export function updateGuest(patch) {
   });
 }
 
-/** Subscribe to changes. Fires on writes in this tab AND cross-tab via `storage`. */
+/** Subscribe to changes. Fires immediately with the current guest, then on writes. */
 export function subscribeGuest(cb) {
   if (typeof window === "undefined") return () => {};
+  cb(readOnce());
   const onLocal = (e) => cb(e.detail);
   const onCrossTab = (e) => {
     if (e.key !== KEY) return;
