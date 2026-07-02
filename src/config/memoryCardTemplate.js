@@ -16,9 +16,11 @@ const FOOT_H = 148;
 
 /** Filename for branded keepsake download. */
 export function memoryCardDownloadName(shotId) {
-  const slug = getEventContent().dateDisplay.replace(/\s*\.\s*/g, "").replace(/\s+/g, "");
+  const content = getEventContent();
+  const mark = content.initials?.replace(/\s+/g, "") || "Moment";
+  const slug = (content.dateDisplay || "tonight").replace(/\s*\.\s*/g, "").replace(/\s+/g, "");
   const id = shotId ? `-${String(shotId).slice(0, 12)}` : "";
-  return `${getEventContent().initials.replace(/\s+/g, "")}-${slug}${id}.jpg`;
+  return `${mark}-${slug}${id}.jpg`;
 }
 
 /** Filename for plain photo download. */
@@ -27,7 +29,23 @@ export function plainPhotoDownloadName(shotId) {
   return `moment-${id}.jpg`;
 }
 
-export function triggerDownload(blob, filename) {
+/**
+ * Save a blob to the device. Uses the native share sheet on iOS (where
+ * programmatic <a download> is ignored) and falls back to anchor download.
+ */
+export async function triggerDownload(blob, filename) {
+  const type = blob.type || "image/jpeg";
+  const file = new File([blob], filename, { type });
+
+  if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: "Save Moment" });
+      return;
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -39,13 +57,43 @@ export function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 8000);
 }
 
-function loadImage(src) {
+function loadImageElement(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("Could not load image for keepsake card"));
+    img.decoding = "async";
+    if (!src.startsWith("blob:") && !src.startsWith("data:")) {
+      img.crossOrigin = "anonymous";
+    }
     img.src = src;
   });
+}
+
+/** Same-origin URL for canvas export — avoids Supabase CORS tainting. */
+export function photoExportUrl(eventSlug, photoId) {
+  if (!eventSlug || !photoId) return "";
+  return `/api/events/${encodeURIComponent(eventSlug)}/photos/${encodeURIComponent(photoId)}?asset=raw`;
+}
+
+/** Fetch cross-origin gallery URLs as blobs so canvas export is not tainted. */
+async function loadImageForExport(src) {
+  if (!src) throw new Error("No image URL");
+  if (src.startsWith("blob:") || src.startsWith("data:")) {
+    return loadImageElement(src);
+  }
+
+  const res = await fetch(src, {
+    credentials: src.startsWith("/") ? "include" : "omit",
+  });
+  if (!res.ok) throw new Error(`Could not fetch image (${res.status})`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    return await loadImageElement(objectUrl);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 async function ensureFonts() {
@@ -85,7 +133,7 @@ function drawCover(ctx, img, x, y, w, h) {
  */
 export async function composeMemoryCardBlob(imageUrl) {
   await ensureFonts();
-  const img = await loadImage(imageUrl);
+  const img = await loadImageForExport(imageUrl);
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -127,23 +175,26 @@ export async function composeMemoryCardBlob(imageUrl) {
 
   const footTop = photoY + photoH + 28;
   const cx = W / 2;
+  const { initials, dateDisplay } = getEventContent();
 
   ctx.fillStyle = "#b48a4a";
   ctx.globalAlpha = 0.65;
   ctx.fillRect(cx - 28, footTop, 56, 1);
   ctx.globalAlpha = 1;
 
-  ctx.fillStyle = "#1c1a17";
-  ctx.font = '500 52px "Cormorant Garamond", Georgia, serif';
-  ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
-  ctx.letterSpacing = "0.16em";
-  ctx.fillText(getEventContent().initials, cx, footTop + 58);
+  if (initials?.trim()) {
+    ctx.fillStyle = "#1c1a17";
+    ctx.font = '500 52px "Cormorant Garamond", Georgia, serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(initials, cx, footTop + 58);
+  }
 
-  ctx.font = '600 22px "Source Sans 3", system-ui, sans-serif';
-  ctx.fillStyle = "#524c44";
-  ctx.letterSpacing = "0.28em";
-  ctx.fillText(getEventContent().dateDisplay.toUpperCase(), cx, footTop + 96);
+  if (dateDisplay?.trim()) {
+    ctx.font = '600 22px "Source Sans 3", system-ui, sans-serif';
+    ctx.fillStyle = "#524c44";
+    ctx.fillText(dateDisplay.toUpperCase(), cx, footTop + (initials?.trim() ? 96 : 58));
+  }
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

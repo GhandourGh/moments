@@ -124,6 +124,26 @@ async function post(req: VercelRequest, res: VercelResponse, eventId: string, gu
   res.status(200).json({ accepted: [photoId], skipped: [], total: await total(), url });
 }
 
+async function getPhotoRaw(res: VercelResponse, eventId: string, photoId: string) {
+  if (!isUuid(photoId)) return sendError(res, "not_found");
+  const db = admin();
+  const { data: photo, error } = await db
+    .from("photos")
+    .select("storage_key, mime")
+    .eq("id", photoId)
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!photo) return sendError(res, "not_found");
+
+  const { data, error: dlErr } = await db.storage.from("photos").download(photo.storage_key);
+  if (dlErr || !data) return sendError(res, "not_found");
+
+  res.setHeader("Content-Type", photo.mime || "image/jpeg");
+  res.setHeader("Cache-Control", "private, max-age=3600");
+  res.status(200).send(Buffer.from(await data.arrayBuffer()));
+}
+
 async function delPhoto(req: VercelRequest, res: VercelResponse, eventId: string, photoId: string) {
   if (!isAdmin(req)) return sendError(res, "unauthenticated", "bad or missing x-admin-passcode");
   if (!rateLimit(res, `photo-delete:${clientIp(req)}`, 30)) return;
@@ -175,6 +195,9 @@ export default withSentry(async (req, res) => {
 
   if (req.method === "GET") {
     if (!rateLimit(res, `photos-list:${session.guestId}`, 240)) return;
+    if (photoId && req.query.asset === "raw") {
+      return getPhotoRaw(res, ev.id, photoId);
+    }
     return listMedia(res, "photos", "photos", ev.id, parseListParams(req));
   }
 

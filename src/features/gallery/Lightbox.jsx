@@ -2,10 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   composeMemoryCardBlob,
   memoryCardDownloadName,
+  photoExportUrl,
   plainPhotoDownloadName,
   triggerDownload,
 } from '@/config/memoryCardTemplate.js';
 import { useFocusTrap } from '@/hooks/useFocusTrap.js';
+import { useToast } from '@/components/ui/Toast.jsx';
+import { getEventId } from '@/services/api/index.js';
 
 /**
  * Full-screen photo viewer.
@@ -46,6 +49,7 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
   const rootRef = useRef(null);
   const imgRef = useRef(null);
   useFocusTrap(rootRef, true);
+  const { show } = useToast();
 
   // Smooth-close: render the overlay with an exiting class, then unmount.
   const [closing, setClosing] = useState(false);
@@ -290,13 +294,20 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
     : plainPhotoDownloadName();
 
   async function downloadKeepsake() {
-    if (!current?.url || cardBusy) return;
+    if (cardBusy) return;
+    const exportSrc = current?.serverId
+      ? photoExportUrl(getEventId(), current.serverId)
+      : current?.url;
+    if (!exportSrc) {
+      show("Photo still loading — try again in a moment", { duration: 4000 });
+      return;
+    }
     setCardBusy(true);
     try {
-      const blob = await composeMemoryCardBlob(current.url);
-      triggerDownload(blob, keepsakeName);
+      const blob = await composeMemoryCardBlob(exportSrc);
+      await triggerDownload(blob, keepsakeName);
     } catch {
-      /* silent — user can retry or use original download */
+      show("Couldn't save this moment — try the Original button", { duration: 5000 });
     } finally {
       setCardBusy(false);
     }
@@ -475,11 +486,11 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
               type="button"
               className="lb-download lb-download-card"
               onClick={downloadKeepsake}
-              disabled={cardBusy}
-              aria-label="Download with initials and date card"
+              disabled={cardBusy || !(current.url || current.serverId)}
+              aria-label="Save moment with initials and date"
             >
               <CardIcon />
-              <span>{cardBusy ? "Saving…" : "Keepsake card"}</span>
+              <span>{cardBusy ? "Saving…" : "Save Moment"}</span>
             </button>
           )}
         </div>
