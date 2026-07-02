@@ -320,8 +320,76 @@
 
 .host-hint {
   font-style: normal;
-  opacity: 0.55;
   font-weight: 400;
+  opacity: 0.55;
+}
+
+.host-hero-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.host-hero-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.host-hero-pick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  cursor: pointer;
+}
+
+.host-hero-pick:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.host-hero-pick:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.host-hero-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.host-hero-preview img {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+
+.host-hero-preview-empty {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.9rem;
+}
+
+.host-hero-preview-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .host-grid {

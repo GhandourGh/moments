@@ -136,6 +136,16 @@ async function del(req: VercelRequest, res: VercelResponse, id: string) {
   } catch (err) {
     captureError(err, { where: "event delete: videos purge", eventId: ev.id });
   }
+  try {
+    const { error: cErr } = await admin().storage.from("covers").remove([
+      `${ev.id}/hero.jpg`,
+      `${ev.id}/hero.png`,
+      `${ev.id}/hero.webp`,
+    ]);
+    if (cErr) throw cErr;
+  } catch (err) {
+    captureError(err, { where: "event delete: cover purge", eventId: ev.id });
+  }
 
   // photos/videos.guest_id are ON DELETE RESTRICT, so the events→guests
   // cascade can trip over still-existing media rows depending on trigger

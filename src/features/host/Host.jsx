@@ -8,6 +8,7 @@ import {
   adminListEvents,
   adminListPhotos,
   adminUpdateEvent,
+  adminUploadHeroImage,
   fetchEvent,
 } from '@/services/api/index.js';
 import ContentEditor, { EMPTY_CONTENT, cleanContent } from '@/features/host/ContentEditor.jsx';
@@ -150,6 +151,7 @@ function CreateEventForm({ passcode, onCreated }) {
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [content, setContent] = useState(EMPTY_CONTENT);
+  const [heroPending, setHeroPending] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState(null);
@@ -159,14 +161,20 @@ function CreateEventForm({ passcode, onCreated }) {
     setBusy(true);
     setError("");
     try {
+      const cleaned = cleanContent(content);
       const res = await adminCreateEvent({
         title,
         startsAt: new Date(startsAt).toISOString(),
         endsAt: new Date(endsAt).toISOString(),
-        content: cleanContent(content),
+        content: cleaned,
       }, passcode);
+      if (heroPending) {
+        const up = await adminUploadHeroImage(res.event.id, heroPending, passcode);
+        await adminUpdateEvent(res.event.id, { content: { ...cleaned, heroImageUrl: up.url } }, passcode);
+        res.event = { ...res.event, content: { ...cleaned, heroImageUrl: up.url } };
+      }
       setCreated(res.event);
-      setTitle(""); setStartsAt(""); setEndsAt(""); setContent(EMPTY_CONTENT);
+      setTitle(""); setStartsAt(""); setEndsAt(""); setContent(EMPTY_CONTENT); setHeroPending(null);
       onCreated();
     } catch (err) {
       setError(
@@ -199,7 +207,7 @@ function CreateEventForm({ passcode, onCreated }) {
               onChange={(e) => setEndsAt(e.target.value)} />
           </label>
         </div>
-        <ContentEditor value={content} onChange={setContent} />
+        <ContentEditor value={content} onChange={setContent} onHeroPending={setHeroPending} />
         {error && <p className="host-error" role="alert">{error}</p>}
         <button className="btn btn-primary" disabled={busy || !title || !startsAt || !endsAt}>
           {busy ? "Creating…" : "Create event"}
@@ -454,7 +462,12 @@ function EditEventPanel({ passcode, event, onSaved, onDeleted }) {
             </span>
             <input className="wm-input host-input-locked" value={event.slug} readOnly tabIndex={-1} />
           </label>
-          <ContentEditor value={content} onChange={setContent} />
+          <ContentEditor
+            value={content}
+            onChange={setContent}
+            eventId={event.id}
+            passcode={passcode}
+          />
           {error && <p className="host-error" role="alert">{error}</p>}
           <button className="btn btn-primary" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>
         </form>
