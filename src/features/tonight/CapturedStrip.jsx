@@ -268,7 +268,11 @@ export default function CapturedStrip({ shots }) {
               aria-label={i >= total ? undefined : `View photo ${(i % total) + 1} of ${total}`}
               tabIndex={i >= total ? -1 : 0}
             >
-              <img src={s.url} alt="" loading="lazy" draggable={false} />
+              {s.url ? (
+                <img src={s.url} alt="" loading="lazy" draggable={false} />
+              ) : (
+                <span className="ph-tile-loading" aria-hidden />
+              )}
               <TimeBadge takenAt={s.takenAt} />
             </button>
           ))}
