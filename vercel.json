@@ -14,6 +14,7 @@
     { "source": "/api/events/:id/hero", "destination": "/api/events/:id?asset=hero" },
     { "source": "/api/ai/moderate", "destination": "/api/ai?action=moderate" },
     { "source": "/api/ai/caption", "destination": "/api/ai?action=caption" },
+    { "source": "/api/events/:id/photos/:photoId/thumb", "destination": "/api/events/:id/photos?photoId=:photoId&asset=thumb" },
     { "source": "/api/events/:id/photos/:photoId", "destination": "/api/events/:id/photos?photoId=:photoId" },
     { "source": "/((?!api/|assets/).*)", "destination": "/index.html" }
   ]

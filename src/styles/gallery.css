@@ -68,8 +68,36 @@
   }
 }
 .ph-tile:active { transform: scale(0.96); }
-.ph-tile img,
-.ph-tile video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+.ph-tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Progressive tile image — placeholder stays visible until decode. */
+.ph-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--paper-2);
+}
+.ph-img-wrap .ph-await {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.ph-img {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.22s var(--ease-out);
+}
+.ph-img--ready { opacity: 1; }
+.ph-img-wrap--ready .ph-await { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ph-img { transition: none; }
+}
 
 /* Event-branded placeholder while signed URLs resolve. */
 .ph-await {

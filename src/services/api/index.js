@@ -204,7 +204,7 @@ export async function uploadShot(blob, { signal, takenAt } = {}) {
   });
   const id = data.accepted?.[0] ?? data.skipped?.[0];
   if (!id) throw new ApiError("upload_rejected", 200, "upload rejected");
-  return { ok: true, id, url: data.url ?? null, takenAt: takenAt ?? Date.now() };
+  return { ok: true, id, url: data.url ?? null, thumbUrl: data.thumbUrl ?? null, takenAt: takenAt ?? Date.now() };
 }
 
 /** Gallery hydration. `since` is epoch-ms or ISO; returns shots with signed URLs. */
@@ -220,6 +220,7 @@ export async function fetchShotsSince(since, { signal } = {}) {
   const shots = (data.photos || []).map((p) => ({
     id: p.id,
     url: p.url,
+    thumbUrl: p.thumbUrl ?? "",
     takenAt: Date.parse(p.takenAt) || Date.now(),
     width: p.width,
     height: p.height,

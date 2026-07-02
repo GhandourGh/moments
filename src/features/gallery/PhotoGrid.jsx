@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import { retry } from '@/services/storage/uploadQueue.js';
 import PhotoAwaitPlaceholder from '@/components/ui/PhotoAwaitPlaceholder.jsx';
+import ProgressiveImage from '@/components/ui/ProgressiveImage.jsx';
 
 /**
  * Square photo grid (iPhone Photos style). Tap a tile → `onOpen(index)`.
@@ -32,8 +33,8 @@ export default function PhotoGrid({ shots, onOpen }) {
                 <PlayGlyph />
               </span>
             </>
-          ) : s.url ? (
-            <TileImage src={s.url} />
+          ) : s.url || s.thumbUrl ? (
+            <TileImage shot={s} eager={i < 9} />
           ) : (
             <PhotoAwaitPlaceholder variant="tile" />
           )}
@@ -44,11 +45,14 @@ export default function PhotoGrid({ shots, onOpen }) {
   );
 }
 
-function TileImage({ src }) {
-  const [broken, setBroken] = useState(false);
-  if (!src || broken) return <PhotoAwaitPlaceholder variant="tile" />;
+function TileImage({ shot, eager }) {
   return (
-    <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} />
+    <ProgressiveImage
+      src={shot.url}
+      thumbSrc={shot.thumbUrl}
+      variant="tile"
+      eager={eager}
+    />
   );
 }
 

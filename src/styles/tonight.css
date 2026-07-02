@@ -116,11 +116,17 @@
   box-shadow: 0 0 0 2px var(--brand),
               0 12px 30px rgba(28, 26, 23, 0.12);
 }
-.strip-card img {
+.strip-card img,
+.strip-card .ph-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 14px;
+}
+.strip-card .ph-img-wrap {
+  width: 100%;
+  height: 100%;
   border-radius: 14px;
 }
 .strip-card .ph-await {
@@ -326,13 +332,19 @@ button.mem-card {
     0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
-.mem-card-photo img {
+.mem-card-photo img,
+.mem-card-photo .ph-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
   border-radius: 10px;
   transition: transform 0.45s var(--ease-out);
+}
+.mem-card-photo .ph-img-wrap {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
 }
 .mem-card-photo .ph-await {
   min-height: 100%;

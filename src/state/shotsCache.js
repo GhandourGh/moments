@@ -18,6 +18,7 @@ function slimShot(s) {
     serverId: s.serverId || null,
     url: httpUrl,
     serverUrl: httpUrl,
+    thumbUrl: typeof s.thumbUrl === "string" ? s.thumbUrl : "",
     takenAt: s.takenAt,
     status: s.status ?? "synced",
     mediaType: s.mediaType ?? "photo",
@@ -107,7 +108,11 @@ export function preserveShotUrls(prev, next) {
         ...s,
         url: old.url,
         serverUrl: old.serverUrl || old.url,
+        thumbUrl: s.thumbUrl || old.thumbUrl || "",
       };
+    }
+    if (old?.thumbUrl && !s.thumbUrl) {
+      return { ...s, thumbUrl: old.thumbUrl };
     }
     return s;
   });

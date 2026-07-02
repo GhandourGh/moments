@@ -8,10 +8,14 @@ import { preserveShotUrls, readSessionShots, writeShotsCache, clearLegacyShotsCa
 
 const POLL_MS = 10_000;
 
-function initialShots() {
+function bootShots() {
   if (!hasBackend()) return SEED_SHOTS;
-  // Never paint from cache on boot — server reconcile is the source of truth.
-  return [];
+  return readSessionShots(getEventId());
+}
+
+function bootHydrated() {
+  if (!hasBackend()) return true;
+  return readSessionShots(getEventId()).length > 0;
 }
 
 const PhotosContext = createContext(null);
@@ -59,6 +63,7 @@ function mergeServerShots(prev, serverShots) {
       serverId: r.id,
       serverUrl: r.url,
       url: r.url ?? "",
+      thumbUrl: r.thumbUrl ?? "",
       takenAt: r.takenAt,
       status: "synced",
       mediaType: r.mediaType ?? "photo",
@@ -76,8 +81,14 @@ function mergeServerShots(prev, serverShots) {
       guestFirstName: echo.guestFirstName,
       guestLastName: echo.guestLastName,
     };
-    if (!echo.url) return { ...s, ...patch };
-    return { ...s, ...patch, url: echo.url, serverUrl: echo.url };
+    if (!echo.url) return { ...s, ...patch, thumbUrl: s.thumbUrl || echo.thumbUrl || "" };
+    return {
+      ...s,
+      ...patch,
+      url: echo.url,
+      serverUrl: echo.url,
+      thumbUrl: echo.thumbUrl || s.thumbUrl || "",
+    };
   });
   if (fresh.length) {
     next = [...fresh, ...next].sort((a, b) => b.takenAt - a.takenAt);
@@ -112,8 +123,8 @@ function reconcileServerShots(prev, serverShots) {
 export function PhotosProvider({ children }) {
   // Seeds are dev/offline furniture — with a live backend the gallery must
   // show only real captures, so seed placeholders never mix with them.
-  const [shots, setShots] = useState(initialShots);
-  const [hydrated, setHydrated] = useState(false);
+  const [shots, setShots] = useState(bootShots);
+  const [hydrated, setHydrated] = useState(bootHydrated);
   const blobUrls = useRef(new Set());
   const shotsRef = useRef(shots);
   shotsRef.current = shots;

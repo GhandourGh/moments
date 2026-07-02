@@ -9,6 +9,7 @@ import {
 } from "framer-motion";
 import TimeBadge from '@/components/ui/TimeBadge.jsx';
 import PhotoAwaitPlaceholder from '@/components/ui/PhotoAwaitPlaceholder.jsx';
+import ProgressiveImage from '@/components/ui/ProgressiveImage.jsx';
 import Lightbox from '@/features/gallery/Lightbox.jsx';
 
 const SCROLL_PX_PER_SEC = 32;
@@ -268,8 +269,13 @@ export default function CapturedStrip({ shots }) {
               aria-label={i >= total ? undefined : `View photo ${(i % total) + 1} of ${total}`}
               tabIndex={i >= total ? -1 : 0}
             >
-              {s.url ? (
-                <img src={s.url} alt="" loading="lazy" draggable={false} />
+              {s.url || s.thumbUrl ? (
+                <ProgressiveImage
+                  src={s.url}
+                  thumbSrc={s.thumbUrl}
+                  variant="strip"
+                  eager={i % total === activeIndex}
+                />
               ) : (
                 <PhotoAwaitPlaceholder variant="strip" />
               )}

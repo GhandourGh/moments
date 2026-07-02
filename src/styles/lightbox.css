@@ -118,6 +118,34 @@
   padding: 8px 64px; /* room for the side nav buttons */
   min-height: 0;
 }
+.lb-img-stack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+}
+.lb-img-preview {
+  position: absolute;
+  max-width: min(100%, 720px);
+  max-height: 100%;
+  object-fit: contain;
+  filter: blur(12px) saturate(1.05);
+  transform: scale(1.04);
+  opacity: 0.9;
+  pointer-events: none;
+  animation: none;
+}
+.lb-img--loading {
+  opacity: 0;
+}
+.lb-img--ready {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lb-img-preview { filter: blur(6px); transform: none; }
+}
 .lb-img {
   max-width: 100%;
   max-height: 100%;
@@ -125,7 +153,6 @@
   border-radius: 4px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
   cursor: default;
-  animation: lb-pop 0.22s ease;
   /* Force the image to honor the stage's height even at very tall aspect */
   object-fit: contain;
 }
@@ -135,6 +162,10 @@
 @keyframes lb-pop {
   from { transform: scale(0.96); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
+}
+.lb-img--ready { animation: lb-pop 0.22s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .lb-img--ready { animation: none; }
 }
 
 .lb-nav {
