@@ -217,9 +217,8 @@ export default function CapturedStrip({ shots }) {
     <motion.section
       className="strip section-band section-band--cream"
       id="gallery"
-      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
     >
       <div className="strip-head section-inner">
         <div className="strip-head-main">

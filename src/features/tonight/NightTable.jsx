@@ -25,7 +25,7 @@ function whisperFor(guestCount, freshMins) {
  */
 export default function NightTable({ shots }) {
   const sectionRef = useRef(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(() => shots.length > 0);
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
   const guestShots = useMemo(() => shots.filter((s) => !s.seed), [shots]);
@@ -37,6 +37,10 @@ export default function NightTable({ shots }) {
   const freshest = guestShots[0];
   const freshMins = freshest ? minutesAgo(freshest.takenAt) : null;
   const whisper = whisperFor(guestCount, freshMins);
+
+  useEffect(() => {
+    if (shots.length > 0) setVisible(true);
+  }, [shots.length]);
 
   useEffect(() => {
     const el = sectionRef.current;

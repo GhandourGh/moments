@@ -4,8 +4,14 @@ import { deleteShot, listShots } from '@/services/storage/photoStore.js';
 import { enqueue, subscribe, tick } from '@/services/storage/uploadQueue.js';
 import { createSession, fetchShotsSince, getEventId, getServerGuestId, hasBackend } from '@/services/api/index.js';
 import { getGuest, subscribeGuest } from '@/state/guest.js';
+import { preserveShotUrls, readShotsCache, writeShotsCache } from '@/state/shotsCache.js';
 
 const POLL_MS = 10_000;
+
+function initialShots() {
+  if (!hasBackend()) return SEED_SHOTS;
+  return readShotsCache(getEventId());
+}
 
 const PhotosContext = createContext(null);
 
@@ -105,7 +111,7 @@ function reconcileServerShots(prev, serverShots) {
 export function PhotosProvider({ children }) {
   // Seeds are dev/offline furniture — with a live backend the gallery must
   // show only real captures, so seed placeholders never mix with them.
-  const [shots, setShots] = useState(hasBackend() ? [] : SEED_SHOTS);
+  const [shots, setShots] = useState(initialShots);
   const [hydrated, setHydrated] = useState(false);
   const blobUrls = useRef(new Set());
   const shotsRef = useRef(shots);
@@ -146,6 +152,14 @@ export function PhotosProvider({ children }) {
     return merged;
   }, [trackUrl]);
 
+  const applyShots = useCallback((merged, { keepPreviousUrls = false } = {}) => {
+    setShots((prev) => {
+      const next = keepPreviousUrls ? preserveShotUrls(prev, merged) : merged;
+      writeShotsCache(getEventId(), next);
+      return next;
+    });
+  }, []);
+
   // On mount (and when the guest registers after the welcome modal), rebuild
   // from IndexedDB + a full server fetch so refresh shows uploaded photos
   // even when local blob storage failed.
@@ -154,11 +168,11 @@ export function PhotosProvider({ children }) {
     (async () => {
       const merged = await bootstrapGallery(() => cancelled);
       if (cancelled || merged == null) return;
-      setShots(merged);
+      applyShots(merged, { keepPreviousUrls: true });
       setHydrated(true);
     })();
     return () => { cancelled = true; };
-  }, [bootstrapGallery]);
+  }, [bootstrapGallery, applyShots]);
 
   useEffect(() => {
     if (!hasBackend()) return undefined;
@@ -168,12 +182,12 @@ export function PhotosProvider({ children }) {
       (async () => {
         const merged = await bootstrapGallery(() => cancelled);
         if (cancelled || merged == null) return;
-        setShots(merged);
+        applyShots(merged, { keepPreviousUrls: true });
         tick();
       })();
     });
     return () => { cancelled = true; unsub(); };
-  }, [bootstrapGallery]);
+  }, [bootstrapGallery, applyShots]);
 
   useEffect(() => () => {
     blobUrls.current.forEach((url) => URL.revokeObjectURL(url));
@@ -196,7 +210,11 @@ export function PhotosProvider({ children }) {
       guestLastName: guest.lastName,
     };
     trackUrl(url);
-    setShots((prev) => [{ id, url, takenAt, status, mediaType, ...attribution }, ...prev]);
+    setShots((prev) => {
+      const next = [{ id, url, takenAt, status, mediaType, ...attribution }, ...prev];
+      writeShotsCache(getEventId(), next);
+      return next;
+    });
     enqueue({ id, blob, takenAt, mediaType, ...attribution });
     return { id, url };
   }, [trackUrl]);
@@ -204,7 +222,11 @@ export function PhotosProvider({ children }) {
   // Reflect queue status changes (synced / failed / pending-retry) into UI.
   useEffect(() => {
     return subscribe((id, patch) => {
-      setShots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+      setShots((prev) => {
+        const next = prev.map((s) => (s.id === id ? { ...s, ...patch } : s));
+        writeShotsCache(getEventId(), next);
+        return next;
+      });
     });
   }, []);
 
@@ -237,9 +259,14 @@ export function PhotosProvider({ children }) {
         const fullSync = needsUrls || pollCount % FULL_SYNC_EVERY === 0;
         const res = await fetchShotsSince(fullSync ? 0 : since);
         if (res.ok && Array.isArray(res.shots)) {
-          setShots((prev) => (
-            fullSync ? reconcileServerShots(prev, res.shots) : mergeServerShots(prev, res.shots)
-          ));
+          setShots((prev) => {
+            const merged = fullSync
+              ? reconcileServerShots(prev, res.shots)
+              : mergeServerShots(prev, res.shots);
+            const next = preserveShotUrls(prev, merged);
+            writeShotsCache(getEventId(), next);
+            return next;
+          });
           if (!fullSync && res.shots.length) {
             const maxTakenAt = Math.max(...res.shots.map((r) => r.takenAt));
             since = Math.max(since, maxTakenAt - 60_000);
@@ -270,12 +297,16 @@ export function PhotosProvider({ children }) {
         }
         deleteShot(gone.serverId || id);
       }
-      return prev.filter((s) => s.id !== id);
+      const next = prev.filter((s) => s.id !== id);
+      writeShotsCache(getEventId(), next);
+      return next;
     });
   }, [untrackUrl]);
 
+  const galleryHasShots = shots.some((s) => !s.seed && s.mediaType !== "video");
+
   return (
-    <PhotosContext.Provider value={{ shots, hydrated, addShot, removeShot }}>
+    <PhotosContext.Provider value={{ shots, hydrated, galleryHasShots, addShot, removeShot }}>
       {children}
     </PhotosContext.Provider>
   );

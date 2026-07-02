@@ -32,7 +32,11 @@ export default function MemoryCard({
         : {})}
     >
       <div className="mem-card-photo">
-        <img src={shot.url} alt="" draggable={false} loading="lazy" />
+        {shot.url ? (
+          <img src={shot.url} alt="" draggable={false} loading="lazy" />
+        ) : (
+          <span className="ph-tile-loading" aria-hidden />
+        )}
       </div>
       <footer className="mem-card-foot">
         <span className="mem-card-rule" aria-hidden />

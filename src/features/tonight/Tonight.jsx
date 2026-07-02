@@ -23,7 +23,7 @@ const HERO_ITEM = {
 };
 
 export default function Tonight() {
-  const { shots } = usePhotos();
+  const { shots, galleryHasShots } = usePhotos();
   const { openCamera } = useOutletContext();
   const content = useEventContent();
   const { features } = content;
@@ -108,8 +108,8 @@ export default function Tonight() {
         <ScrollVelocityBand />
       )}
 
-      {photoShots.length > 0 && <CapturedStrip shots={photoShots} />}
-      {features.memoryRow !== false && <NightTable shots={photoShots} />}
+      {galleryHasShots && <CapturedStrip shots={photoShots} />}
+      {features.memoryRow !== false && galleryHasShots && <NightTable shots={photoShots} />}
 
       {features.schedule !== false && <Schedule />}
       <AddToHomeScreen />
