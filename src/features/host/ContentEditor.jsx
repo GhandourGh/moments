@@ -1,5 +1,5 @@
-import React, { useEffect, useId, useRef, useState } from "react";
-import { adminUploadHeroImage } from '@/services/api/index.js';
+import React from "react";
+import HeroCoverField from '@/components/HeroCoverField.jsx';
 
 /**
  * Per-event content form — the fields that drive the guest frontend
@@ -47,144 +47,6 @@ function Field({ label, hint, ...input }) {
   );
 }
 
-/** Resize + re-encode before upload — keeps hero fast on mobile guest pages. */
-async function prepareHeroBlob(file) {
-  try {
-    const bitmap = await createImageBitmap(file);
-    const max = 1920;
-    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    const out = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
-    return out && out.size < file.size ? out : file;
-  } catch {
-    return file;
-  }
-}
-
-function HeroImageField({ value, previewUrl, onChange, onUploaded, eventId, passcode, onPendingFile }) {
-  const inputId = useId();
-  const inputRef = useRef(null);
-  const [preview, setPreview] = useState(previewUrl || "");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [pendingName, setPendingName] = useState("");
-
-  useEffect(() => {
-    setPreview(previewUrl || "");
-  }, [previewUrl]);
-
-  useEffect(() => () => {
-    if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
-  }, [preview]);
-
-  async function onPick(e) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Please choose a JPEG, PNG, or WebP image.");
-      return;
-    }
-
-    setError("");
-    setBusy(true);
-    try {
-      const blob = await prepareHeroBlob(file);
-      if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
-      setPreview(URL.createObjectURL(blob));
-
-      if (eventId && passcode) {
-        const res = await adminUploadHeroImage(eventId, blob, passcode);
-        onChange(res.storageKey);
-        setPreview(res.url);
-        setPendingName("");
-        onPendingFile?.(null);
-        onUploaded?.({ storageKey: res.storageKey, url: res.url });
-      } else {
-        onPendingFile?.(blob);
-        setPendingName(file.name);
-        onChange("");
-      }
-    } catch (err) {
-      setError(err.message || "Couldn't upload that image.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function clearImage() {
-    if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
-    setPreview("");
-    setPendingName("");
-    onChange("");
-    onPendingFile?.(null);
-    onUploaded?.(null);
-    setError("");
-  }
-
-  const canUploadNow = Boolean(eventId && passcode);
-  const showPreview = Boolean(preview || pendingName);
-
-  return (
-    <div className="host-hero-upload">
-      <span className="wm-field-label">
-        Hero cover photo<em className="host-hint"> — full-screen background</em>
-      </span>
-
-      {showPreview ? (
-        <div className="host-hero-preview">
-          {preview ? (
-            <img src={preview} alt="Hero cover preview" />
-          ) : (
-            <div className="host-hero-preview-empty">{pendingName}</div>
-          )}
-          <div className="host-hero-preview-actions">
-            <button type="button" className="btn btn-text" disabled={busy}
-              onClick={() => inputRef.current?.click()}>
-              {busy ? "Uploading…" : "Replace"}
-            </button>
-            <button type="button" className="btn btn-text" disabled={busy} onClick={clearImage}>
-              Remove
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="host-hero-pick"
-          disabled={busy}
-          onClick={() => inputRef.current?.click()}
-        >
-          {busy ? "Uploading…" : "Choose from your files"}
-        </button>
-      )}
-
-      {!canUploadNow && !showPreview && (
-        <p className="host-content-note">
-          For a new event, pick an image now — it uploads right after you create the event.
-        </p>
-      )}
-      {pendingName && !canUploadNow && (
-        <p className="host-content-note">Ready to upload: {pendingName}</p>
-      )}
-      {error && <p className="host-error" role="alert">{error}</p>}
-
-      <input
-        ref={inputRef}
-        id={inputId}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="host-hero-input"
-        onChange={onPick}
-      />
-    </div>
-  );
-}
-
 export default function ContentEditor({
   value,
   onChange,
@@ -224,7 +86,8 @@ export default function ContentEditor({
         placeholder="Capture a moment — it joins the shared gallery the instant you snap it." maxLength={160}
         onChange={(e) => set({ heroLede: e.target.value })} />
 
-      <HeroImageField
+      <HeroCoverField
+        variant="host"
         value={c.heroStorageKey}
         previewUrl={c.heroImageUrl}
         onChange={(heroStorageKey) => set({ heroStorageKey })}
