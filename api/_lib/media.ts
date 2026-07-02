@@ -130,3 +130,10 @@ export function parseFaces(raw: string | undefined): number[][] {
     return [];
   }
 }
+
+/** 24h signed URL for a single storage object. */
+export async function signedUrlFor(bucket: string, storageKey: string): Promise<string | null> {
+  const { data, error } = await admin().storage.from(bucket).createSignedUrl(storageKey, 86_400);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}

@@ -1,10 +1,11 @@
 /**
- * On-device face embeddings — the reason face match costs $0/event.
+ * On-device face embeddings for /me only — not used on the upload path.
  *
  * Uses @vladmandic/face-api (tiny detector + 68-landmark + recognition net,
- * ~7 MB of weights served from /models, lazy-loaded on first use). Descriptors
- * are 128-dim L2-normalised vectors; the server matches them with pgvector
- * cosine search (moment.match_faces). Raw selfies never leave the phone.
+ * ~7 MB of weights served from /models, lazy-loaded on first /me visit).
+ * Descriptors are 128-dim L2-normalised vectors; the server matches them
+ * with pgvector cosine search (moment.match_faces). Raw selfies never leave
+ * the phone. Gallery photos are indexed on-demand from /me via galleryIndex.
  *
  * Everything here is best-effort: if the model fails to load or a photo has
  * no faces, callers get [] / null and the upload proceeds without embeddings.
@@ -95,7 +96,7 @@ export async function descriptorForSelfie(blob) {
   }
 }
 
-/** Kick off the model download early (e.g. after first paint). */
+/** Kick off the model download early (e.g. when /me mounts). */
 export function warmup() {
   if (enabled()) ensureModels().catch(() => {});
 }

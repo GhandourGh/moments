@@ -5,7 +5,7 @@ import { admin } from "../../_lib/supabase.js";
 import { isAdmin, requireSession } from "../../_lib/session.js";
 import { isSha256 } from "../../_lib/validate.js";
 import { resolveEvent } from "../../_lib/events.js";
-import { eventEnded, listMedia, parseFaces, parseListParams, resolveEventForSession } from "../../_lib/media.js";
+import { eventEnded, listMedia, parseFaces, parseListParams, resolveEventForSession, signedUrlFor } from "../../_lib/media.js";
 import { moderateImage, moderationEnabled } from "../../_lib/ai.js";
 import { captureError, withSentry } from "../../_lib/sentry.js";
 
@@ -55,10 +55,11 @@ async function post(req: VercelRequest, res: VercelResponse, eventId: string, gu
   };
 
   // Dedupe on (event_id, hash) — same shot re-sent by the retry queue.
-  const { data: dupe } = await db.from("photos").select("id")
+  const { data: dupe } = await db.from("photos").select("id, storage_key")
     .eq("event_id", eventId).eq("hash", hash).maybeSingle();
   if (dupe) {
-    return res.status(200).json({ accepted: [], skipped: [dupe.id], total: await total() });
+    const url = await signedUrlFor("photos", dupe.storage_key);
+    return res.status(200).json({ accepted: [], skipped: [dupe.id], total: await total(), url });
   }
 
   // Moderate before anything is stored. Blocked photos never touch storage.
@@ -101,9 +102,10 @@ async function post(req: VercelRequest, res: VercelResponse, eventId: string, gu
     if (insErr.code === "23505") {
       // A concurrent upload of the same photo won the (event_id, hash) race —
       // return the row that actually exists, not the uuid we never inserted.
-      const { data: existing } = await db.from("photos").select("id")
+      const { data: existing } = await db.from("photos").select("id, storage_key")
         .eq("event_id", eventId).eq("hash", hash).maybeSingle();
-      return res.status(200).json({ accepted: [], skipped: [existing?.id ?? photoId], total: await total() });
+      const url = existing ? await signedUrlFor("photos", existing.storage_key) : null;
+      return res.status(200).json({ accepted: [], skipped: [existing?.id ?? photoId], total: await total(), url });
     }
     throw insErr;
   }
@@ -117,7 +119,8 @@ async function post(req: VercelRequest, res: VercelResponse, eventId: string, gu
     if (faceErr) captureError(faceErr, { where: "face_embeddings insert", photoId, eventId });
   }
 
-  res.status(200).json({ accepted: [photoId], skipped: [], total: await total() });
+  const url = await signedUrlFor("photos", storageKey);
+  res.status(200).json({ accepted: [photoId], skipped: [], total: await total(), url });
 }
 
 export default withSentry(async (req, res) => {

@@ -156,11 +156,9 @@ async function imageSize(blob) {
 }
 
 /**
- * Upload one photo. Computes hash + dimensions, compresses if needed, and
- * attaches on-device face descriptors (faces param, from services/faces) so
- * face match costs nothing server-side.
+ * Upload one photo. Computes hash + dimensions, compresses if needed.
  */
-export async function uploadShot(blob, { signal, takenAt, faces } = {}) {
+export async function uploadShot(blob, { signal, takenAt } = {}) {
   if (!hasBackend()) return { ok: false, reason: "no-backend" };
   const upload = await compressForUpload(blob);
   const [hash, size] = await Promise.all([sha256Hex(upload), imageSize(upload)]);
@@ -171,14 +169,13 @@ export async function uploadShot(blob, { signal, takenAt, faces } = {}) {
   body.append("takenAt", new Date(takenAt ?? Date.now()).toISOString());
   body.append("width", String(size.width));
   body.append("height", String(size.height));
-  if (Array.isArray(faces) && faces.length) body.append("faces", JSON.stringify(faces));
 
   const data = await request(`/api/events/${encodeURIComponent(getEventId())}/photos`, {
     method: "POST", body, signal,
   });
   const id = data.accepted?.[0] ?? data.skipped?.[0];
   if (!id) throw new ApiError("upload_rejected", 200, "upload rejected");
-  return { ok: true, id, takenAt: takenAt ?? Date.now() };
+  return { ok: true, id, url: data.url ?? null, takenAt: takenAt ?? Date.now() };
 }
 
 /** Gallery hydration. `since` is epoch-ms or ISO; returns shots with signed URLs. */
@@ -274,6 +271,15 @@ export async function matchSelfie(blob, { signal } = {}) {
     method: "POST", signal, body: { embedding },
   });
   return { ok: true, matches: data.photoIds || [], threshold: data.threshold };
+}
+
+/** Attach on-device face descriptors to photos indexed from /me. */
+export async function postFaceEmbeddings(items, { signal } = {}) {
+  if (!hasBackend()) return { ok: false, reason: "no-backend" };
+  const data = await request(`/api/events/${encodeURIComponent(getEventId())}/embeddings`, {
+    method: "POST", signal, body: { items },
+  });
+  return { ok: true, indexed: data.indexed ?? 0 };
 }
 
 export async function moderatePhoto(blob, { signal } = {}) {

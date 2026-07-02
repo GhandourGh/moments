@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import BackLink from '@/components/layout/BackLink.jsx';
 import CameraView from '@/features/camera/CameraView.jsx';
 import PhotoGrid from '@/features/gallery/PhotoGrid.jsx';
 import Lightbox from '@/features/gallery/Lightbox.jsx';
 import { usePhotos } from '@/state/PhotosContext.jsx';
+import { env } from '@/config/env.js';
 import { hasBackend, matchSelfie, patchSession } from '@/services/api/index.js';
+import { ensureGalleryIndexed } from '@/services/faces/galleryIndex.js';
+import { warmup as warmupFaces } from '@/services/faces/index.js';
 import EmptyState from '@/components/ui/EmptyState.jsx';
 import { getGuest, isValidName, subscribeGuest, updateGuest } from '@/state/guest.js';
 
@@ -18,9 +21,19 @@ export default function Me() {
   const [selfieOpen, setSelfieOpen] = useState(false);
   const [selfie, setSelfie] = useState(null); // { url } from last capture
   const [matchIds, setMatchIds] = useState(null); // null = mock fallback
+  const [matching, setMatching] = useState(false);
   const [matchOpenIndex, setMatchOpenIndex] = useState(null);
   const [mineOpenIndex, setMineOpenIndex] = useState(null);
+  const indexAbort = useRef(null);
 
+  const galleryShots = useMemo(
+    () => shots.filter((s) => !s.seed && (s.mediaType ?? "photo") !== "video"),
+    [shots]
+  );
+  const galleryKey = useMemo(
+    () => galleryShots.map((s) => s.serverId ?? s.id).join(","),
+    [galleryShots]
+  );
   const mine = shots.filter((s) => !s.seed); // anything the guest captured
   // Real match if the backend gave us ids; otherwise a deterministic 1-in-3
   // slice of the seed gallery so the UI still feels alive in dev / offline.
@@ -30,16 +43,30 @@ export default function Me() {
       : shots.filter((_, i) => i % 3 === 0).slice(0, 6)
     : [];
 
+  // Face models load only on /me — not on the camera upload path.
+  useEffect(() => {
+    if (!env.ai.faceMatchEnabled) return undefined;
+    warmupFaces();
+    indexAbort.current?.abort();
+    const ac = new AbortController();
+    indexAbort.current = ac;
+    ensureGalleryIndexed(galleryShots, { signal: ac.signal }).catch(() => {});
+    return () => ac.abort();
+  }, [galleryKey, galleryShots]);
+
   async function onCapture(blob) {
     if (selfie?.url) URL.revokeObjectURL(selfie.url);
     setSelfie({ url: URL.createObjectURL(blob) });
     setSelfieOpen(false);
     setMatchIds(null);
-    if (hasBackend()) {
+    if (hasBackend() && env.ai.faceMatchEnabled) {
+      setMatching(true);
       try {
+        await ensureGalleryIndexed(galleryShots);
         const res = await matchSelfie(blob);
         if (res.ok) setMatchIds(res.matches || []);
       } catch { /* keep the mock fallback */ }
+      finally { setMatching(false); }
     }
   }
 
@@ -74,12 +101,14 @@ export default function Me() {
         <div className="me-card-body">
           <p className="me-card-eyebrow">{selfie ? "We've got you" : "Step one"}</p>
           <p className="me-card-text">
-            {selfie
-              ? `${matches.length} photo${matches.length === 1 ? "" : "s"} we think you're in.`
-              : "A clear, front-facing selfie works best. Nothing is saved beyond this session."}
+            {matching
+              ? "Scanning the gallery for your face…"
+              : selfie
+                ? `${matches.length} photo${matches.length === 1 ? "" : "s"} we think you're in.`
+                : "A clear, front-facing selfie works best. Nothing is saved beyond this session."}
           </p>
           <div className="me-card-actions">
-            <button className="btn btn-primary" onClick={() => setSelfieOpen(true)}>
+            <button className="btn btn-primary" onClick={() => setSelfieOpen(true)} disabled={matching}>
               {selfie ? "Retake selfie" : "Take a selfie"}
             </button>
             {selfie && (

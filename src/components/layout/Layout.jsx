@@ -97,9 +97,8 @@ function LayoutInner() {
     } catch { /* private mode — silently skip */ }
   }, []);
 
-  // Session refresh, event content and face-model warmup live in
-  // EventBoundary now — they re-run when the event slug changes, not just
-  // once per Layout mount.
+  // Session refresh and moderation warmup live in EventBoundary now — they
+  // re-run when the event slug changes, not just once per Layout mount.
 
   // Let any descendant re-open the modal via window.dispatchEvent(...)
   useEffect(() => {

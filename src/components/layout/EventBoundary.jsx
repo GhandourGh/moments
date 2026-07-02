@@ -4,10 +4,10 @@ import { setActiveEvent, getLastEvent } from '@/state/activeEvent.js';
 import { createSession, getEvent } from '@/services/api/index.js';
 import { setEventContent } from '@/state/eventContent.js';
 import { getGuest } from '@/state/guest.js';
-import { warmup as warmupFaces } from '@/services/faces/index.js';
+import { warmup as warmupModeration } from '@/services/moderation/index.js';
 
-// Face models are event-agnostic — pull them once per page load, not per slug.
-let facesWarmed = false;
+// Moderation model is event-agnostic — pull once per page load.
+let moderationWarmed = false;
 
 /**
  * Route boundary for /e/:eventSlug. Binds the API client to the slug BEFORE
@@ -58,9 +58,9 @@ export default function EventBoundary() {
         else console.warn("[event] event load failed:", err);
       });
 
-    if (!facesWarmed) {
-      facesWarmed = true;
-      warmupFaces();
+    if (!moderationWarmed) {
+      moderationWarmed = true;
+      warmupModeration();
     }
 
     return () => { cancelled = true; };
