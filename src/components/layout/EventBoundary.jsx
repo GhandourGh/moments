@@ -2,12 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useParams } from "react-router-dom";
 import { setActiveEvent, getLastEvent } from '@/state/activeEvent.js';
 import { createSession, getEvent } from '@/services/api/index.js';
-import { setEventContent, resetEventContent, subscribeEventContent, getPageTitle } from '@/state/eventContent.js';
+import { setEventContent, prepareEventLoad, subscribeEventContent, getPageTitle } from '@/state/eventContent.js';
 import { getGuest } from '@/state/guest.js';
-import { warmup as warmupModeration } from '@/services/moderation/index.js';
-
-// Moderation model is event-agnostic — pull once per page load.
-let moderationWarmed = false;
 
 /**
  * Route boundary for /e/:eventSlug. Binds the API client to the slug BEFORE
@@ -34,7 +30,7 @@ export default function EventBoundary() {
 
   useEffect(() => {
     let cancelled = false;
-    resetEventContent();
+    prepareEventLoad(eventSlug);
 
     // Re-bind the moment.sid cookie to this event.
     if (getGuest()) {
@@ -57,11 +53,6 @@ export default function EventBoundary() {
         if (err?.status === 404) setMissingSlug(eventSlug);
         else console.warn("[event] event load failed:", err);
       });
-
-    if (!moderationWarmed) {
-      moderationWarmed = true;
-      warmupModeration();
-    }
 
     return () => { cancelled = true; };
   }, [eventSlug]);

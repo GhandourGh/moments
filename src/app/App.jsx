@@ -3,11 +3,11 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Layout from '@/components/layout/Layout.jsx';
 import EventBoundary from '@/components/layout/EventBoundary.jsx';
 import Tonight from '@/features/tonight/Tonight.jsx';
-import Gallery from '@/features/gallery/Gallery.jsx';
-import Me from '@/features/me/Me.jsx';
-import Story from '@/features/story/Story.jsx';
 import NotFound from '@/features/not-found/NotFound.jsx';
 
+const Gallery = lazy(() => import('@/features/gallery/Gallery.jsx'));
+const Me = lazy(() => import('@/features/me/Me.jsx'));
+const Story = lazy(() => import('@/features/story/Story.jsx'));
 // Host tools and admin dashboard are passcode-protected — lazy-loaded.
 const Host = lazy(() => import('@/features/host/Host.jsx'));
 const Admin = lazy(() => import('@/features/admin/Admin.jsx'));
@@ -37,9 +37,9 @@ export default function App() {
         <Route path="/e/:eventSlug" element={<EventBoundary />}>
           <Route element={<Layout />}>
             <Route index element={<Tonight />} />
-            <Route path="gallery" element={<Gallery />} />
-            <Route path="me" element={<Me />} />
-            <Route path="story" element={<Story />} />
+            <Route path="gallery" element={<Suspense fallback={null}><Gallery /></Suspense>} />
+            <Route path="me" element={<Suspense fallback={null}><Me /></Suspense>} />
+            <Route path="story" element={<Suspense fallback={null}><Story /></Suspense>} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Route>

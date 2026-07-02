@@ -55,13 +55,11 @@ async function postCover(req: VercelRequest, res: VercelResponse, id: string) {
 }
 
 /** Sign hero storage keys for the client; strip stale public URLs from DB. */
-async function enrichContent(raw: Record<string, unknown> | null | undefined) {
+async function enrichContent(raw: Record<string, unknown> | null | undefined, slug: string) {
   const content = { ...(raw ?? {}) };
   const key = typeof content.heroStorageKey === "string" ? content.heroStorageKey.trim() : "";
   if (key) {
-    const url = await signedUrlFor(HERO_BUCKET, key);
-    if (url) content.heroImageUrl = url;
-    else delete content.heroImageUrl;
+    content.heroImageUrl = `/api/events/${encodeURIComponent(slug)}/hero`;
   } else if (typeof content.heroImageUrl === "string" && content.heroImageUrl) {
     // Legacy URL without a storage key — only keep local stock paths.
     if (!content.heroImageUrl.startsWith("/")) delete content.heroImageUrl;
@@ -77,14 +75,38 @@ async function shape(data: any) {
     startsAt: data.starts_at,
     endsAt: data.ends_at,
     coverPhotoId: data.cover_photo_id,
-    content: await enrichContent(data.content ?? {}),
+    content: await enrichContent(data.content ?? {}, data.slug),
   };
 }
 
 async function get(req: VercelRequest, res: VercelResponse, id: string) {
   const data = await resolveEvent(id);
   if (!data) return sendError(res, "not_found");
+  res.setHeader("Cache-Control", "private, max-age=60, stale-while-revalidate=300");
   res.status(200).json(await shape(data));
+}
+
+const HERO_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
+async function getHero(res: VercelResponse, id: string) {
+  const ev = await resolveEvent(id);
+  if (!ev) return sendError(res, "not_found");
+  const content = (ev.content ?? {}) as Record<string, unknown>;
+  const key = typeof content.heroStorageKey === "string" ? content.heroStorageKey.trim() : "";
+  if (!key) return sendError(res, "not_found");
+
+  const { data, error } = await admin().storage.from(HERO_BUCKET).download(key);
+  if (error || !data) return sendError(res, "not_found");
+
+  const ext = key.split(".").pop()?.toLowerCase() ?? "jpg";
+  res.setHeader("Content-Type", HERO_MIME[ext] ?? "image/jpeg");
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.status(200).send(Buffer.from(await data.arrayBuffer()));
 }
 
 async function patch(req: VercelRequest, res: VercelResponse, id: string) {
@@ -218,6 +240,7 @@ export default withSentry(async (req, res) => {
   if (!methodGuard(req, res, "GET", "PATCH", "DELETE", "POST")) return;
   if (!rateLimit(res, `event-${req.method}:${clientIp(req)}`, req.method === "DELETE" ? 30 : 120)) return;
   const id = String(req.query.id ?? "");
+  if (req.query.asset === "hero" && req.method === "GET") return getHero(res, id);
   if (req.method === "GET") return get(req, res, id);
   if (req.method === "DELETE") return del(req, res, id);
   if (req.method === "POST") return postCover(req, res, id);

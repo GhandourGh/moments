@@ -49,6 +49,11 @@ export default function CameraView({
   useFocusTrap(rootRef, true);
   const isSelfie = facing === "user";
 
+  // Moderation model (~4 MB) — load only when the camera opens, not on page boot.
+  useEffect(() => {
+    import('@/services/moderation/index.js').then((m) => m.warmup()).catch(() => {});
+  }, []);
+
   const {
     ready,
     error,

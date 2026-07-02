@@ -51,8 +51,8 @@ export default function Tonight() {
       <section className="hero" id="hero">
         <div className="hero-media" aria-hidden>
           <div
-            className={`hero-bg${content.loaded && content.heroImageUrl ? " hero-bg--image" : ""}`}
-            style={content.loaded && content.heroImageUrl
+            className={`hero-bg${content.heroImageUrl ? " hero-bg--image" : ""}`}
+            style={content.heroImageUrl
               ? { backgroundImage: `url("${content.heroImageUrl}")` }
               : undefined}
           />
@@ -61,7 +61,7 @@ export default function Tonight() {
 
         <motion.div
           className="hero-content"
-          initial="hidden"
+          initial={false}
           animate="visible"
           variants={HERO_STAGGER}
         >

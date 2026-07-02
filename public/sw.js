@@ -7,9 +7,8 @@
  *
  * Cache name is versioned so bumping the constant invalidates old assets.
  */
-// v9: path-based event routing (/e/<slug>). Offline navigations for any
-// path fall back to the cached "/" shell — the client router reads the path.
-const VERSION = "fg-v9";
+// v10: cache stable hero URLs (/api/events/:slug/hero) across refreshes.
+const VERSION = "fg-v10";
 const SHELL = ["/", "/logo.svg", "/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 function isPhotoAsset(pathname) {
@@ -18,6 +17,10 @@ function isPhotoAsset(pathname) {
 
 function isManifest(pathname) {
   return pathname === "/manifest.webmanifest";
+}
+
+function isHeroApi(pathname) {
+  return /^\/api\/events\/[^/]+\/hero$/.test(pathname);
 }
 
 self.addEventListener("install", (event) => {
@@ -40,9 +43,27 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
 
-  // Never cache API traffic — gallery polls, signed URLs and the per-event
-  // manifest (/api/manifest?event=…) must always hit the network.
-  if (new URL(req.url).pathname.startsWith("/api/")) return;
+  const pathname = new URL(req.url).pathname;
+
+  // Cache-first for the stable hero image — small, public, immutable.
+  if (isHeroApi(pathname)) {
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        if (cached) return cached;
+        return fetch(req).then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(VERSION).then((c) => c.put(req, copy)).catch(() => {});
+          }
+          return res;
+        });
+      })
+    );
+    return;
+  }
+
+  // Never cache other API traffic — gallery polls, signed URLs, etc.
+  if (pathname.startsWith("/api/")) return;
 
   // Network-first for HTML so route updates land fast; fall back to cache.
   if (req.mode === "navigate" || req.headers.get("accept")?.includes("text/html")) {
@@ -57,8 +78,6 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
-
-  const pathname = new URL(req.url).pathname;
 
   // Network-first for manifest so PWA install name updates after rebrand.
   if (isManifest(pathname)) {

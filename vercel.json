@@ -11,6 +11,7 @@
   "rewrites": [
     { "source": "/api/events/:id/embeddings", "destination": "/api/events/:id/match" },
     { "source": "/api/events/:id/cover", "destination": "/api/events/:id" },
+    { "source": "/api/events/:id/hero", "destination": "/api/events/:id?asset=hero" },
     { "source": "/api/ai/moderate", "destination": "/api/ai?action=moderate" },
     { "source": "/api/ai/caption", "destination": "/api/ai?action=caption" },
     { "source": "/api/events/:id/photos/:photoId", "destination": "/api/events/:id/photos?photoId=:photoId" },

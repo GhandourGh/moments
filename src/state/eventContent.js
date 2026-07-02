@@ -20,6 +20,7 @@ import {
   pageTitleFromContent,
 } from '@/config/eventDefaults.js';
 import { hasBackend } from '@/services/api/index.js';
+import { preloadHero, readEventCache, writeEventCache } from '@/state/eventContentCache.js';
 
 /** Offline / local dev without an event API — show the stock wedding demo. */
 const STOCK_DEFAULTS = Object.freeze({
@@ -78,10 +79,25 @@ export function resetEventContent() {
 }
 
 /**
+ * Hydrate from localStorage when revisiting the same slug — instant hero +
+ * copy on refresh. Falls back to blank state for first visits.
+ */
+export function prepareEventLoad(slug) {
+  const cached = readEventCache(slug);
+  if (cached) {
+    setEventContent(cached, { fromCache: true });
+    preloadHero(cached.content?.heroImageUrl);
+    return true;
+  }
+  resetEventContent();
+  return false;
+}
+
+/**
  * Merge a server event (GET /api/events/:id shape) over neutral defaults.
  * Empty content → blank event (title from events.title only).
  */
-export function setEventContent(event) {
+export function setEventContent(event, opts = {}) {
   const c = event?.content ?? {};
   const hasHero = Boolean(
     (typeof c.heroStorageKey === "string" && c.heroStorageKey.trim())
@@ -94,9 +110,12 @@ export function setEventContent(event) {
     || ""
   );
 
+  const heroImageUrl = hasHero && c.heroImageUrl ? c.heroImageUrl : "";
+
   current = withDerived({
     ...PLATFORM_DEFAULTS,
     loaded: true,
+    fromCache: Boolean(opts.fromCache),
     eventTitle: event?.title?.trim() ?? "",
     dateISO: event?.startsAt ? event.startsAt.slice(0, 10) : "",
     coupleNames,
@@ -113,10 +132,15 @@ export function setEventContent(event) {
     schedule: Array.isArray(c.schedule) ? c.schedule : [],
     story: Array.isArray(c.story) ? c.story : [],
     features: mergeFeatures(c.features),
-    ...(hasHero && c.heroImageUrl ? { heroImageUrl: c.heroImageUrl } : {}),
+    ...(hasHero && heroImageUrl ? { heroImageUrl } : {}),
     ...(hasHero && c.heroStorageKey ? { heroStorageKey: c.heroStorageKey } : {}),
     ...(!hasHero ? { heroImageUrl: "", heroStorageKey: "" } : {}),
   });
+
+  if (!opts.fromCache && event?.slug) {
+    writeEventCache(event.slug, event);
+    preloadHero(heroImageUrl);
+  }
 
   listeners.forEach((cb) => {
     try { cb(current); } catch { /* one bad subscriber can't break the rest */ }
