@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { clientIp, methodGuard, rateLimit, sendError } from "./_lib/http.js";
 import { admin } from "./_lib/supabase.js";
 import { readSession, requireSession, setSessionCookie } from "./_lib/session.js";
-import { isGuestId, isUuid, isValidName } from "./_lib/validate.js";
+import { isGuestId, isValidName } from "./_lib/validate.js";
 import { resolveEvent } from "./_lib/events.js";
 import { withSentry } from "./_lib/sentry.js";
 
@@ -15,10 +15,13 @@ import { withSentry } from "./_lib/sentry.js";
  *       photos.guest_first/last_name are deliberately untouched.
  */
 
-/** guests.id is a uuid column; legacy `g-...` client ids get a stable derived uuid. */
-function toGuestUuid(clientId: string): string {
-  if (isUuid(clientId)) return clientId.toLowerCase();
-  const h = createHash("sha256").update(`moment.guest:${clientId}`).digest("hex");
+/**
+ * Stable guests.id for a (event, device) pair. The client keeps one guestId in
+ * localStorage across events, but guests.id is a global primary key — reusing
+ * the client uuid as id breaks when the same phone visits a second event.
+ */
+function guestRowId(eventId: string, deviceId: string): string {
+  const h = createHash("sha256").update(`moment.guest:v2:${eventId}:${deviceId}`).digest("hex");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
@@ -34,18 +37,57 @@ async function post(req: VercelRequest, res: VercelResponse) {
   const ev = await resolveEvent(event);
   if (!ev) return sendError(res, "invalid_event");
 
-  const id = toGuestUuid(guestId);
-  const { error: upErr } = await db.from("guests").upsert(
-    {
+  const deviceId = String(guestId);
+  const first = (firstName as string).trim();
+  const last = (lastName as string).trim();
+
+  // Lookup by the per-event unique key first — never blind-upsert on id.
+  const { data: existing, error: findErr } = await db
+    .from("guests")
+    .select("id")
+    .eq("event_id", ev.id)
+    .eq("device_id", deviceId)
+    .maybeSingle();
+  if (findErr) throw findErr;
+
+  let id: string;
+
+  if (existing) {
+    id = existing.id;
+    const { error } = await db
+      .from("guests")
+      .update({ first_name: first, last_name: last })
+      .eq("id", id);
+    if (error) throw error;
+  } else {
+    id = guestRowId(ev.id, deviceId);
+    const { error } = await db.from("guests").insert({
       id,
       event_id: ev.id,
-      first_name: (firstName as string).trim(),
-      last_name: (lastName as string).trim(),
-      device_id: guestId,
-    },
-    { onConflict: "event_id,device_id" }
-  );
-  if (upErr) throw upErr;
+      device_id: deviceId,
+      first_name: first,
+      last_name: last,
+    });
+    if (error?.code === "23505") {
+      // Concurrent tab or a legacy row — re-fetch by (event, device).
+      const { data: raced, error: raceErr } = await db
+        .from("guests")
+        .select("id")
+        .eq("event_id", ev.id)
+        .eq("device_id", deviceId)
+        .maybeSingle();
+      if (raceErr) throw raceErr;
+      if (!raced) throw error;
+      id = raced.id;
+      const { error: updErr } = await db
+        .from("guests")
+        .update({ first_name: first, last_name: last })
+        .eq("id", id);
+      if (updErr) throw updErr;
+    } else if (error) {
+      throw error;
+    }
+  }
 
   await setSessionCookie(res, { guestId: id, eventId: ev.id });
   res.status(200).json({ guestId: id, eventId: ev.id });
