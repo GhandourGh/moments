@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { clientIp, methodGuard, parseMultipart, rateLimit, sendError } from "../../_lib/http.js";
 import { admin } from "../../_lib/supabase.js";
 import { isAdmin, requireSession } from "../../_lib/session.js";
-import { isSha256 } from "../../_lib/validate.js";
+import { isSha256, isUuid } from "../../_lib/validate.js";
 import { resolveEvent } from "../../_lib/events.js";
 import { eventEnded, listMedia, parseFaces, parseListParams, resolveEventForSession, signedUrlFor } from "../../_lib/media.js";
 import { moderateImage, moderationEnabled } from "../../_lib/ai.js";
@@ -14,6 +14,7 @@ import { captureError, withSentry } from "../../_lib/sentry.js";
  *   fields: file, takenAt, hash (sha256), width, height,
  *           faces (JSON array of 128-dim on-device face descriptors)
  * GET  /api/events/:id/photos — gallery hydration with since/limit/cursor.
+ * DELETE /api/events/:id/photos/:photoId — admin delete (photoId query rewrite).
  *
  * Moderation runs server-side inside the upload (one Haiku call per photo)
  * rather than trusting the client's preflight. Fail-open: if the provider is
@@ -123,7 +124,39 @@ async function post(req: VercelRequest, res: VercelResponse, eventId: string, gu
   res.status(200).json({ accepted: [photoId], skipped: [], total: await total(), url });
 }
 
+async function delPhoto(req: VercelRequest, res: VercelResponse, eventId: string, photoId: string) {
+  if (!isAdmin(req)) return sendError(res, "unauthenticated", "bad or missing x-admin-passcode");
+  if (!rateLimit(res, `photo-delete:${clientIp(req)}`, 30)) return;
+  if (!isUuid(photoId)) return sendError(res, "not_found");
+
+  const db = admin();
+  const { data: photo, error } = await db
+    .from("photos")
+    .select("id, storage_key")
+    .eq("id", photoId)
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!photo) return sendError(res, "not_found");
+
+  const { error: rmErr } = await db.storage.from("photos").remove([photo.storage_key]);
+  if (rmErr) captureError(rmErr, { where: "photo delete: storage remove", photoId, eventId });
+
+  const { error: delErr } = await db.from("photos").delete().eq("id", photoId);
+  if (delErr) throw delErr;
+
+  res.status(200).json({ ok: true });
+}
+
 export default withSentry(async (req, res) => {
+  const photoId = typeof req.query.photoId === "string" ? req.query.photoId : "";
+
+  if (req.method === "DELETE" && photoId) {
+    const ev = await resolveEvent(String(req.query.id ?? ""));
+    if (!ev) return sendError(res, "not_found");
+    return delPhoto(req, res, ev.id, photoId);
+  }
+
   if (!methodGuard(req, res, "POST", "GET")) return;
 
   // Host dashboard access: a valid x-admin-passcode replaces the guest

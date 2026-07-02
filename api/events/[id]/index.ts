@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { clientIp, methodGuard, rateLimit, sendError } from "../../_lib/http.js";
+import { clientIp, methodGuard, parseMultipart, rateLimit, sendError } from "../../_lib/http.js";
 import { admin } from "../../_lib/supabase.js";
 import { isAdmin } from "../../_lib/session.js";
 import { validContent } from "../../_lib/validate.js";
@@ -15,7 +15,46 @@ import { captureError, withSentry } from "../../_lib/sentry.js";
  * DELETE /api/events/:id — host delete (x-admin-passcode): purges storage
  *        objects for the event, then the row (FK cascades take guests,
  *        photos, videos, face_embeddings, reactions).
+ * POST   /api/events/:id/cover — host hero upload (rewritten here on Hobby).
  */
+
+const COVER_MAX_BYTES = 5 * 1024 * 1024;
+const COVER_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const COVER_EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+const COVERS_BUCKET = "covers";
+
+function publicCoverUrl(eventId: string, ext: string): string {
+  const base = (process.env.SUPABASE_URL ?? "").replace(/\/+$/, "");
+  return `${base}/storage/v1/object/public/${COVERS_BUCKET}/${eventId}/hero.${ext}`;
+}
+
+async function postCover(req: VercelRequest, res: VercelResponse, id: string) {
+  if (!isAdmin(req)) return sendError(res, "unauthenticated", "bad or missing x-admin-passcode");
+  if (!rateLimit(res, `cover-up:${clientIp(req)}`, 20)) return;
+
+  const ev = await resolveEvent(id);
+  if (!ev) return sendError(res, "not_found");
+
+  const body = await parseMultipart(req, COVER_MAX_BYTES).catch((err) => {
+    sendError(res, err?.code === "file_too_large" ? "payload_too_large" : "invalid_request", err?.message);
+    return null;
+  });
+  if (!body) return;
+
+  const file = body.files.find((f) => f.field === "file") ?? body.files[0];
+  if (!file?.buffer.length) return sendError(res, "invalid_request", "missing file");
+  if (!COVER_MIMES.has(file.mime)) return sendError(res, "unsupported_media");
+
+  const ext = COVER_EXT[file.mime];
+  const storageKey = `${ev.id}/hero.${ext}`;
+  const { error: upErr } = await admin().storage.from(COVERS_BUCKET).upload(storageKey, file.buffer, {
+    contentType: file.mime,
+    upsert: true,
+  });
+  if (upErr) throw upErr;
+
+  res.status(200).json({ url: publicCoverUrl(ev.id, ext) });
+}
 
 function shape(data: any) {
   return {
@@ -163,10 +202,11 @@ async function del(req: VercelRequest, res: VercelResponse, id: string) {
 }
 
 export default withSentry(async (req, res) => {
-  if (!methodGuard(req, res, "GET", "PATCH", "DELETE")) return;
+  if (!methodGuard(req, res, "GET", "PATCH", "DELETE", "POST")) return;
   if (!rateLimit(res, `event-${req.method}:${clientIp(req)}`, req.method === "DELETE" ? 30 : 120)) return;
   const id = String(req.query.id ?? "");
   if (req.method === "GET") return get(req, res, id);
   if (req.method === "DELETE") return del(req, res, id);
+  if (req.method === "POST") return postCover(req, res, id);
   return patch(req, res, id);
 });
