@@ -27,7 +27,13 @@ export function getEventId() {
 }
 
 export function hasBackend() {
-  return BASE.length > 0 && Boolean(getEventId());
+  if (!getEventId()) return false;
+  // Production serves /api on the same origin — an empty VITE_API_BASE still
+  // works via relative paths. Treating empty BASE as "local-only" here was
+  // skipping uploads + server gallery hydration, so photos vanished on refresh
+  // whenever IndexedDB didn't keep the blob.
+  if (import.meta.env.PROD) return true;
+  return BASE.length > 0;
 }
 
 function url(path) {

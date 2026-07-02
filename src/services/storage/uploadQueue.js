@@ -12,8 +12,9 @@
  * drains the union of IDB + Map, deduped by id.
  */
 
-import { hasBackend, getEventId, uploadShot, uploadVideo, createSession } from '@/services/api/index.js';
+import { hasBackend, getEventId, uploadShot, uploadVideo, createSession, fetchShotsSince } from '@/services/api/index.js';
 import { subscribe as subscribeActiveEvent } from '@/state/activeEvent.js';
+import { subscribeGuest, getGuest } from '@/state/guest.js';
 import { descriptorsForPhoto } from '@/services/faces/index.js';
 import { moderatePhotoLocal } from '@/services/moderation/index.js';
 import { listShots, putShot } from '@/services/storage/photoStore.js';
@@ -144,7 +145,23 @@ async function uploadOne(rec) {
       serverUrl: result.url,
     };
     await saveRecord(next);
-    emit(rec.id, { status: "synced", serverId: result.id, serverUrl: result.url });
+    emit(rec.id, {
+      status: "synced",
+      serverId: result.id,
+      serverUrl: result.url,
+    });
+    // Pull the signed URL from the server so IndexedDB + refresh have it even
+    // if the local blob was evicted.
+    fetchShotsSince(0)
+      .then((res) => {
+        if (!res.ok) return;
+        const match = res.shots?.find((s) => s.id === result.id);
+        if (match?.url) {
+          saveRecord({ ...next, serverUrl: match.url });
+          emit(rec.id, { serverUrl: match.url, url: match.url });
+        }
+      })
+      .catch(() => {});
     return true;
   } catch {
     const attempts = (rec.attempts ?? 0) + 1;
@@ -181,6 +198,7 @@ if (typeof window !== "undefined") {
   // before the router has set the slug, and pending shots for another event
   // wait until the guest is back on that event.
   subscribeActiveEvent(() => tick());
+  subscribeGuest(() => { if (getGuest()) tick(); });
   // First drain after page load — catches anything left pending from a prior session.
   if (document.readyState === "complete") tick();
   else window.addEventListener("load", () => tick(), { once: true });
