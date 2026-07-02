@@ -17,7 +17,11 @@ export const WELCOME_KEY = "fg.welcomed.v1";
 export default function WelcomeModal({ onClose }) {
   const cardRef = useRef(null);
   useFocusTrap(cardRef, true);
-  const { initials, dateDisplay } = useEventContent();
+  const { initials, dateDisplay, coupleNames, features } = useEventContent();
+  const eyebrow = [
+    features.navbarInitials !== false && initials ? initials : "",
+    dateDisplay || "",
+  ].filter(Boolean).join(" · ");
 
   const existing = getGuest();
   const [firstName, setFirstName] = useState(existing?.firstName ?? "");
@@ -62,8 +66,10 @@ export default function WelcomeModal({ onClose }) {
       <div className="wm-backdrop" onClick={onBackdropClick} />
       <form className="wm-card" ref={cardRef} onSubmit={handleSubmit} noValidate>
         <img src="/logo.svg" alt="" className="wm-mark" />
-        <p className="wm-eyebrow">{initials} &nbsp;·&nbsp; {dateDisplay}</p>
-        <h2 className="wm-title" id="wm-title">Welcome to our gallery</h2>
+        {eyebrow && <p className="wm-eyebrow">{eyebrow}</p>}
+        <h2 className="wm-title" id="wm-title">
+          {coupleNames ? `Welcome to ${coupleNames}` : "Welcome to the gallery"}
+        </h2>
         <p className="wm-body">
           Tap the camera anywhere in the app to capture a photo. Every shot you
           take lands in a shared gallery the whole night sees.

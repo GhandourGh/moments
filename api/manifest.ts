@@ -31,7 +31,8 @@ export default withSentry(async (req, res) => {
 
   const content = (ev.content ?? {}) as Record<string, unknown>;
   const coupleNames = typeof content.coupleNames === "string" ? content.coupleNames.trim() : "";
-  const name = ev.title.trim() || coupleNames || "Moments";
+  const pageTitle = typeof content.pageTitle === "string" ? content.pageTitle.trim() : "";
+  const name = pageTitle.split("—")[0].trim() || ev.title.trim() || coupleNames || "Moments";
 
   res.setHeader("Content-Type", "application/manifest+json");
   res.setHeader("Cache-Control", "public, max-age=300");

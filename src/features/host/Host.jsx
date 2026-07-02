@@ -12,6 +12,7 @@ import {
   fetchEvent,
 } from '@/services/api/index.js';
 import ContentEditor, { EMPTY_CONTENT, cleanContent } from '@/features/host/ContentEditor.jsx';
+import { DEFAULT_FEATURES } from '@/config/eventDefaults.js';
 
 import { ADMIN_PASSCODE_KEY } from '@/config/admin.js';
 const LIST_POLL_MS = 15_000;
@@ -380,7 +381,12 @@ function EditEventPanel({ passcode, event, onSaved, onDeleted }) {
         const res = await fetchEvent(event.slug);
         if (cancelled) return;
         const ev = res.event;
-        const c = { ...EMPTY_CONTENT, ...(ev.content ?? {}) };
+        const raw = ev.content ?? {};
+        const c = {
+          ...EMPTY_CONTENT,
+          ...raw,
+          features: { ...DEFAULT_FEATURES, ...(raw.features ?? {}) },
+        };
         const starts = toLocalInput(ev.startsAt);
         const ends = toLocalInput(ev.endsAt);
         setTitle(ev.title ?? "");
@@ -403,7 +409,11 @@ function EditEventPanel({ passcode, event, onSaved, onDeleted }) {
   async function saveHeroContent(nextContent) {
     const cleaned = cleanContent(nextContent);
     const res = await adminUpdateEvent(event.id, { content: cleaned }, passcode);
-    setContent({ ...EMPTY_CONTENT, ...(res.event.content ?? {}) });
+    setContent({
+      ...EMPTY_CONTENT,
+      ...(res.event.content ?? {}),
+      features: { ...DEFAULT_FEATURES, ...(res.event.content?.features ?? {}) },
+    });
     setOriginal((o) => ({ ...o, content: JSON.stringify(cleaned) }));
   }
 

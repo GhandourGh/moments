@@ -1,13 +1,15 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
+import { useEventContent } from '@/state/eventContent.js';
 
 /**
  * Mobile-only bottom tab bar. Four navigation tabs + a center "capture"
  * button that triggers the in-app camera regardless of current route.
  */
 export default function BottomTabBar({ onCapture }) {
-  // Relative targets resolve under the current /e/<slug> (the tab bar
-  // renders inside the pathless Layout route).
+  const { features } = useEventContent();
+  const showStory = features.storyNav !== false && features.story !== false;
+
   return (
     <nav className="tabbar" aria-label="Primary">
       <TabLink to="." label="Tonight" icon={<SparkIcon />} end />
@@ -23,7 +25,7 @@ export default function BottomTabBar({ onCapture }) {
       </button>
 
       <TabLink to="me" label="Me" icon={<PersonIcon />} />
-      <TabLink to="story" label="Story" icon={<BookIcon />} />
+      {showStory && <TabLink to="story" label="Story" icon={<BookIcon />} />}
     </nav>
   );
 }

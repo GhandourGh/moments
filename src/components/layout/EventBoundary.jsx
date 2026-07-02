@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useParams } from "react-router-dom";
 import { setActiveEvent, getLastEvent } from '@/state/activeEvent.js';
 import { createSession, getEvent } from '@/services/api/index.js';
-import { setEventContent, resetEventContent } from '@/state/eventContent.js';
+import { setEventContent, resetEventContent, subscribeEventContent, getPageTitle } from '@/state/eventContent.js';
 import { getGuest } from '@/state/guest.js';
 import { warmup as warmupModeration } from '@/services/moderation/index.js';
 
@@ -66,7 +66,19 @@ export default function EventBoundary() {
     return () => { cancelled = true; };
   }, [eventSlug]);
 
-  // Per-event PWA manifest (start_url "/e/<slug>") so an installed app
+  // Per-event browser tab title (overrides static index.html).
+  useEffect(() => {
+    const apply = () => {
+      document.title = getPageTitle();
+      const appTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+      const short = getPageTitle().split("—")[0].trim() || "Moments";
+      if (appTitle) appTitle.setAttribute("content", short.slice(0, 12));
+    };
+    apply();
+    return subscribeEventContent(apply);
+  }, [eventSlug]);
+
+  // Per-event PWA manifest
   // reopens on the right event. The static manifest stays the default for
   // /host and non-event pages — restore it on unmount.
   useEffect(() => {

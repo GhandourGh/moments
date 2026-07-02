@@ -26,6 +26,7 @@ export default function Tonight() {
   const { shots } = usePhotos();
   const { openCamera } = useOutletContext();
   const content = useEventContent();
+  const { features } = content;
   const [first, second] = splitCoupleNames(content);
   const [showScrollCue, setShowScrollCue] = useState(true);
   // The home-page rails are stills-only. Videos live in their own section
@@ -103,12 +104,14 @@ export default function Tonight() {
         )}
       </section>
 
-      <ScrollVelocityBand />
+      {features.scrollBand !== false && content.dateDisplay && (
+        <ScrollVelocityBand />
+      )}
 
       {photoShots.length > 0 && <CapturedStrip shots={photoShots} />}
-      <NightTable shots={photoShots} />
+      {features.memoryRow !== false && <NightTable shots={photoShots} />}
 
-      <Schedule />
+      {features.schedule !== false && <Schedule />}
       <AddToHomeScreen />
     </>
   );
@@ -154,7 +157,7 @@ function scheduleStatus(rows, now, dateISO) {
 }
 
 function Schedule() {
-  const { schedule, dressCode, dateISO } = useEventContent();
+  const { schedule, dressCode, dateISO, features } = useEventContent();
   // 30s tick keeps "now" honest without burning render cycles.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -169,7 +172,7 @@ function Schedule() {
       <div className="section-inner">
         <header className="tn-head">
           <h2 className="tn-title display-title">Tonight's flow</h2>
-          {dressCode && (
+          {features.dressCode !== false && dressCode && (
             <span className="dress-chip">
               <span className="dress-chip-dot" />
               {dressCode}
