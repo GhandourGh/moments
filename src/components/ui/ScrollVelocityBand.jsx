@@ -1,16 +1,16 @@
 import React from "react";
-import { COUPLE, COUPLE_NAMES } from '@/config/couple.js';
+import { splitCoupleNames, useEventContent } from '@/state/eventContent.js';
 import ScrollVelocity from '@/components/ui/ScrollVelocity.jsx';
-
-const [first, second] = COUPLE_NAMES;
 
 /**
  * Wedding-branded scroll marquee — sits under the hero on Tonight.
  */
 export default function ScrollVelocityBand() {
+  const content = useEventContent();
+  const [first, second] = splitCoupleNames(content);
   return (
     <ScrollVelocity
-      text={`${first} & ${second}  ·  ${COUPLE.date}`}
+      text={[first, second].filter(Boolean).join(" & ") + "  ·  " + content.dateDisplay}
       velocity={38}
       damping={72}
       stiffness={260}

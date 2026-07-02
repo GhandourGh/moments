@@ -1,5 +1,5 @@
 import React from "react";
-import { COUPLE, STORY } from '@/config/couple.js';
+import { useEventContent } from '@/state/eventContent.js';
 import BackLink from '@/components/layout/BackLink.jsx';
 
 /**
@@ -8,38 +8,41 @@ import BackLink from '@/components/layout/BackLink.jsx';
  * couple can swap visuals per event without touching this file.
  */
 export default function Story() {
+  const { coupleNames, initials, hashtag, story } = useEventContent();
   return (
     <section className="page-section page-section-wide">
       <BackLink />
       <header className="section-head">
         <h1 className="section-title">How we got here</h1>
         <p className="section-lede">
-          The short version of {COUPLE.names}. The long version comes later
+          The short version of {coupleNames}. The long version comes later
           tonight, with wine in hand.
         </p>
       </header>
 
       <div className="story">
-        {STORY.map((chap, i) => (
+        {story.map((chap, i) => (
           <article
             key={chap.title}
             className={`chap ${i % 2 ? "chap-rev" : ""}`}
           >
-            <figure className="chap-media">
-              <img src={chap.image} alt={chap.alt ?? ""} loading="lazy" />
-            </figure>
+            {chap.image && (
+              <figure className="chap-media">
+                <img src={chap.image} alt={chap.alt ?? ""} loading="lazy" />
+              </figure>
+            )}
             <div className="chap-text">
               <p className="chap-num">{String(i + 1).padStart(2, "0")}</p>
               <h2 className="chap-title">{chap.title}</h2>
               <p className="chap-body">{chap.body}</p>
-              <p className="chap-pull">&ldquo;{chap.pull}&rdquo;</p>
+              {chap.pull && <p className="chap-pull">&ldquo;{chap.pull}&rdquo;</p>}
             </div>
           </article>
         ))}
 
         <footer className="story-foot">
-          <p className="story-foot-mark">{COUPLE.initials}</p>
-          <p className="story-foot-line">{COUPLE.hashtag}</p>
+          <p className="story-foot-mark">{initials}</p>
+          {hashtag && <p className="story-foot-line">{hashtag}</p>}
           <button
             type="button"
             className="story-foot-link"

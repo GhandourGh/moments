@@ -1,5 +1,5 @@
 import React from "react";
-import { COUPLE } from '@/config/couple.js';
+import { useEventContent } from '@/state/eventContent.js';
 
 /**
  * Branded keepsake frame — couple initials + wedding date under the photo.
@@ -19,6 +19,7 @@ export default function MemoryCard({
   style,
   onClick,
 }) {
+  const { initials, dateDisplay } = useEventContent();
   const Tag = as === "button" ? "button" : "article";
   const isButton = as === "button";
 
@@ -27,7 +28,7 @@ export default function MemoryCard({
       className={`mem-card ${className}`.trim()}
       style={style}
       {...(isButton
-        ? { type: "button", onClick, "aria-label": `View memory from ${COUPLE.date}` }
+        ? { type: "button", onClick, "aria-label": `View memory from ${dateDisplay}` }
         : {})}
     >
       <div className="mem-card-photo">
@@ -35,8 +36,8 @@ export default function MemoryCard({
       </div>
       <footer className="mem-card-foot">
         <span className="mem-card-rule" aria-hidden />
-        <p className="mem-card-initials">{COUPLE.initials}</p>
-        <p className="mem-card-date">{COUPLE.date}</p>
+        <p className="mem-card-initials">{initials}</p>
+        <p className="mem-card-date">{dateDisplay}</p>
       </footer>
     </Tag>
   );

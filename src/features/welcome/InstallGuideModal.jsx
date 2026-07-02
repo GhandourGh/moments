@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
+import { getEventContent } from '@/state/eventContent.js';
 import { AnimatePresence, motion } from "framer-motion";
 import { useFocusTrap } from '@/hooks/useFocusTrap.js';
-import { COUPLE } from '@/config/couple.js';
 
 const INSTALL_STEPS = [
   {
@@ -103,7 +103,7 @@ export default function InstallGuideModal({ open, onClose, variant = "install" }
           >
             <div className="a2hs-guide-handle" aria-hidden />
             <img src="/icons/icon-180.png" alt="" className="a2hs-guide-icon" width={52} height={52} />
-            <p className="a2hs-guide-kicker">{COUPLE.initials}</p>
+            <p className="a2hs-guide-kicker">{getEventContent().initials}</p>
             <h2 className="a2hs-guide-title" id="a2hs-guide-title">
               {needsSafari ? "Open in Safari first" : "Two quick steps in Safari"}
             </h2>

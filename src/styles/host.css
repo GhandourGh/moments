@@ -1,0 +1,396 @@
+/* /host — host tools. Reuses .wm-field/.wm-input from modals.css. */
+
+.host {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.host-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.host-card-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.host-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.host-error {
+  margin: 0;
+  color: #f87171;
+  font-size: 0.9rem;
+}
+
+.host-share {
+  align-items: center;
+  text-align: center;
+}
+
+.host-qr {
+  width: 220px;
+  height: 220px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+}
+
+.host-link {
+  margin: 0;
+  font-size: 0.85rem;
+  word-break: break-all;
+  opacity: 0.8;
+  user-select: all;
+}
+
+.host-share-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.host-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.host-event {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.host-event:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.host-event-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.host-event-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.host-event-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.host-event-title {
+  font-weight: 600;
+}
+
+.host-event-meta {
+  font-size: 0.8rem;
+  opacity: 0.65;
+}
+
+.host-event-open {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  color: inherit;
+  width: fit-content;
+}
+
+.host-event-open:hover {
+  opacity: 1;
+}
+
+.host-notice {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6ee7b7;
+}
+
+/* Expanding per-event panels (edit / photos) */
+
+.host-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.host-panel-state {
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.host-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.host-input-locked {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Admin photo gallery */
+
+.host-photos-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.host-photos-count {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.host-photo-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.host-photo {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.host-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.host-photo-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  transition: background 0.15s ease;
+}
+
+.host-photo-del:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.host-photo-del.is-armed {
+  background: #b91c1c;
+}
+
+.host-photo-del:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Destructive event deletion */
+
+.host-danger-toggle {
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  padding-top: 8px;
+}
+
+.host-danger-link {
+  color: #f87171;
+  opacity: 0.8;
+}
+
+.host-danger-link:hover {
+  opacity: 1;
+}
+
+.host-danger {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.06);
+}
+
+.host-danger-note {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.host-danger-note code {
+  font-size: 0.85em;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.host-danger-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.host-danger-row .wm-input {
+  flex: 1;
+  min-width: 140px;
+}
+
+.btn-danger {
+  background: rgba(185, 28, 28, 0.85);
+  color: #fff;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(185, 28, 28, 1);
+}
+
+.btn-danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Content editor */
+
+.host-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.host-content-note {
+  margin: 0;
+  font-size: 0.82rem;
+  opacity: 0.6;
+}
+
+.host-hint {
+  font-style: normal;
+  opacity: 0.55;
+  font-weight: 400;
+}
+
+.host-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.host-fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.host-fieldset legend {
+  padding: 0 6px;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.host-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 1.4fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.host-row-x {
+  padding: 4px 8px;
+  opacity: 0.6;
+}
+
+.host-chapter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.host-chapter-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.host-chapter-head .wm-input {
+  flex: 1;
+}
+
+.host-textarea {
+  resize: vertical;
+  min-height: 64px;
+  font: inherit;
+}
+
+@media (max-width: 480px) {
+  .host-dates,
+  .host-grid {
+    grid-template-columns: 1fr;
+  }
+  .host-row {
+    grid-template-columns: 80px 1fr auto;
+  }
+  .host-row .wm-input:nth-child(3) {
+    grid-column: 1 / -2;
+  }
+  .host-event-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .host-photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  }
+}

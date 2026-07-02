@@ -6,10 +6,12 @@ import { NavLink } from "react-router-dom";
  * button that triggers the in-app camera regardless of current route.
  */
 export default function BottomTabBar({ onCapture }) {
+  // Relative targets resolve under the current /e/<slug> (the tab bar
+  // renders inside the pathless Layout route).
   return (
     <nav className="tabbar" aria-label="Primary">
-      <TabLink to="/" label="Tonight" icon={<SparkIcon />} end />
-      <TabLink to="/gallery" label="Gallery" icon={<GridIcon />} />
+      <TabLink to="." label="Tonight" icon={<SparkIcon />} end />
+      <TabLink to="gallery" label="Gallery" icon={<GridIcon />} />
 
       <button
         type="button"
@@ -20,8 +22,8 @@ export default function BottomTabBar({ onCapture }) {
         <CameraIcon />
       </button>
 
-      <TabLink to="/me" label="Me" icon={<PersonIcon />} />
-      <TabLink to="/story" label="Story" icon={<BookIcon />} />
+      <TabLink to="me" label="Me" icon={<PersonIcon />} />
+      <TabLink to="story" label="Story" icon={<BookIcon />} />
     </nav>
   );
 }

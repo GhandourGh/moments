@@ -1,4 +1,4 @@
-import { COUPLE } from '@/config/couple.js';
+import { getEventContent } from '@/state/eventContent.js';
 
 /** Offscreen render target — used when compositing branded downloads. */
 export const MEMORY_CARD_EXPORT = {
@@ -16,9 +16,9 @@ const FOOT_H = 148;
 
 /** Filename for branded keepsake download. */
 export function memoryCardDownloadName(shotId) {
-  const slug = COUPLE.date.replace(/\s*\.\s*/g, "").replace(/\s+/g, "");
+  const slug = getEventContent().dateDisplay.replace(/\s*\.\s*/g, "").replace(/\s+/g, "");
   const id = shotId ? `-${String(shotId).slice(0, 12)}` : "";
-  return `${COUPLE.initials.replace(/\s+/g, "")}-${slug}${id}.jpg`;
+  return `${getEventContent().initials.replace(/\s+/g, "")}-${slug}${id}.jpg`;
 }
 
 /** Filename for plain photo download. */
@@ -138,12 +138,12 @@ export async function composeMemoryCardBlob(imageUrl) {
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   ctx.letterSpacing = "0.16em";
-  ctx.fillText(COUPLE.initials, cx, footTop + 58);
+  ctx.fillText(getEventContent().initials, cx, footTop + 58);
 
   ctx.font = '600 22px "Source Sans 3", system-ui, sans-serif';
   ctx.fillStyle = "#524c44";
   ctx.letterSpacing = "0.28em";
-  ctx.fillText(COUPLE.date.toUpperCase(), cx, footTop + 96);
+  ctx.fillText(getEventContent().dateDisplay.toUpperCase(), cx, footTop + 96);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

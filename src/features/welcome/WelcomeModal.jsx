@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { COUPLE } from '@/config/couple.js';
+import { useEventContent } from '@/state/eventContent.js';
 import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import AddToHomeScreen from '@/features/welcome/AddToHomeScreen.jsx';
 import { getGuest, isValidName, setGuest } from '@/state/guest.js';
+import { createSession } from '@/services/api/index.js';
 
 export const WELCOME_KEY = "fg.welcomed.v1";
 
@@ -16,6 +17,7 @@ export const WELCOME_KEY = "fg.welcomed.v1";
 export default function WelcomeModal({ onClose }) {
   const cardRef = useRef(null);
   useFocusTrap(cardRef, true);
+  const { initials, dateDisplay } = useEventContent();
 
   const existing = getGuest();
   const [firstName, setFirstName] = useState(existing?.firstName ?? "");
@@ -42,6 +44,9 @@ export default function WelcomeModal({ onClose }) {
     setTouched(true);
     if (!canSubmit) return;
     setGuest({ firstName, lastName });
+    // Register with the backend (sets the moment.sid cookie). Fire-and-forget:
+    // if it fails, the upload queue retries before its next upload (docs/auth.md).
+    createSession().catch(() => {});
     try { localStorage.setItem(WELCOME_KEY, "1"); } catch { /* private mode */ }
     onClose();
   }
@@ -57,7 +62,7 @@ export default function WelcomeModal({ onClose }) {
       <div className="wm-backdrop" onClick={onBackdropClick} />
       <form className="wm-card" ref={cardRef} onSubmit={handleSubmit} noValidate>
         <img src="/logo.svg" alt="" className="wm-mark" />
-        <p className="wm-eyebrow">{COUPLE.initials} &nbsp;·&nbsp; {COUPLE.date}</p>
+        <p className="wm-eyebrow">{initials} &nbsp;·&nbsp; {dateDisplay}</p>
         <h2 className="wm-title" id="wm-title">Welcome to our gallery</h2>
         <p className="wm-body">
           Tap the camera anywhere in the app to capture a photo. Every shot you

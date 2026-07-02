@@ -7,7 +7,9 @@
  *
  * Cache name is versioned so bumping the constant invalidates old assets.
  */
-const VERSION = "fg-v8";
+// v9: path-based event routing (/e/<slug>). Offline navigations for any
+// path fall back to the cached "/" shell — the client router reads the path.
+const VERSION = "fg-v9";
 const SHELL = ["/", "/logo.svg", "/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 function isPhotoAsset(pathname) {
@@ -37,6 +39,10 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
+
+  // Never cache API traffic — gallery polls, signed URLs and the per-event
+  // manifest (/api/manifest?event=…) must always hit the network.
+  if (new URL(req.url).pathname.startsWith("/api/")) return;
 
   // Network-first for HTML so route updates land fast; fall back to cache.
   if (req.mode === "navigate" || req.headers.get("accept")?.includes("text/html")) {

@@ -71,7 +71,7 @@ function LayoutInner() {
 
   const handleViewLastPhoto = useCallback(() => {
     setCameraOpen(false);
-    navigate("/gallery");
+    navigate("gallery"); // relative — stays under the current /e/<slug>
   }, [navigate]);
 
   // Upload-failure toast with one-tap retry. Only fires for terminal failures
@@ -96,6 +96,10 @@ function LayoutInner() {
       if (!welcomed || !getGuest()) setWelcomeOpen(true);
     } catch { /* private mode — silently skip */ }
   }, []);
+
+  // Session refresh, event content and face-model warmup live in
+  // EventBoundary now — they re-run when the event slug changes, not just
+  // once per Layout mount.
 
   // Let any descendant re-open the modal via window.dispatchEvent(...)
   useEffect(() => {

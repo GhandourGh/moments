@@ -23,10 +23,18 @@ export const env = {
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
 
+  /** Sentry DSN for the frontend. Empty = error reporting off. */
+  sentryDsn: readString("VITE_SENTRY_DSN"),
+
   api: {
     /** Base URL for the photo backend. Empty = local-only mode. */
     base: readString("VITE_API_BASE").replace(/\/+$/, ""),
-    /** Static event id fallback. Overridden by ?event= at runtime. */
+    /**
+     * Dev-only event fallback so `vite dev` works without a /e/<slug> URL.
+     * Production must NOT set this — the event comes exclusively from the
+     * URL path (state/activeEvent), and a baked-in fallback silently routes
+     * uploads to the wrong event.
+     */
     eventId: readString("VITE_EVENT_ID"),
   },
 

@@ -2,19 +2,24 @@
  * Tiny IndexedDB wrapper for persisting captured photos across page reloads.
  * Zero deps; uses the raw IndexedDB API.
  *
- * Records:  { id, blob, takenAt, status?, serverId?, serverUrl?, attempts?,
- *             guestId?, guestFirstName?, guestLastName? }
+ * Records:  { id, blob, takenAt, eventId?, status?, serverId?, serverUrl?,
+ *             attempts?, guestId?, guestFirstName?, guestLastName? }
  *   status: "local" | "pending" | "synced" | "failed"
  *   Records without `status` were written by an earlier build — treat as "local".
+ *   Records without `eventId` predate multi-event support and are excluded
+ *   from event-filtered listings.
  * Object store keyPath: "id"
  *
- * TEMP: persistence is off — captures live in memory only and clear on refresh.
- * Flip to `true` to restore IndexedDB rehydration + upload queue durability.
+ * Persistence must stay ON: the upload queue is driven entirely by this
+ * store (enqueue → putShot, tick → listShots). With it off, captures never
+ * reach the backend at all — that was the bug that shipped on 2026-07-02.
  */
-const PERSIST_ENABLED = false;
+const PERSIST_ENABLED = true;
 
 const DB_NAME = "moments";
-const DB_VERSION = 1;
+// v2: records gained `eventId`. No schema change — the field is filtered in
+// code (listShots), so the upgrade handler stays a no-op beyond store creation.
+const DB_VERSION = 2;
 const STORE = "shots";
 
 let dbPromise = null;
@@ -43,15 +48,20 @@ function tx(mode) {
   return open().then((db) => db.transaction(STORE, mode).objectStore(STORE));
 }
 
-export async function listShots() {
+/**
+ * List persisted shots. With an `eventId` only that event's records come
+ * back (legacy records with no eventId are excluded); without one, everything.
+ */
+export async function listShots(eventId) {
   if (!PERSIST_ENABLED) return [];
   try {
     const store = await tx("readonly");
-    return new Promise((resolve, reject) => {
+    const all = await new Promise((resolve, reject) => {
       const req = store.getAll();
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
     });
+    return eventId ? all.filter((r) => r.eventId === eventId) : all;
   } catch {
     return []; // private mode, blocked, etc. — degrade silently
   }

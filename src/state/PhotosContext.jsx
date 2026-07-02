@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { SEED_SHOTS } from '@/data/seed.js';
 import { deleteShot, listShots } from '@/services/storage/photoStore.js';
 import { enqueue, subscribe } from '@/services/storage/uploadQueue.js';
-import { fetchShotsSince, hasBackend } from '@/services/api/index.js';
+import { fetchShotsSince, getEventId, hasBackend } from '@/services/api/index.js';
 import { getGuest } from '@/state/guest.js';
 
 const POLL_MS = 10_000;
@@ -17,9 +17,15 @@ const PhotosContext = createContext(null);
  * Shot record: { id, url, takenAt, seed?: true }
  * Seed shots are not persisted (they're just URLs to /public/seed/*).
  * Captured shots are persisted as Blobs, rehydrated to object URLs on load.
+ *
+ * Event scoping: EventBoundary keys its Outlet by slug, so this provider
+ * remounts (state wiped) whenever the guest moves to a different event;
+ * hydration below re-reads only the active event's persisted shots.
  */
 export function PhotosProvider({ children }) {
-  const [shots, setShots] = useState(SEED_SHOTS);
+  // Seeds are dev/offline furniture — with a live backend the gallery must
+  // show only real captures, so seed placeholders never mix with them.
+  const [shots, setShots] = useState(hasBackend() ? [] : SEED_SHOTS);
   const [hydrated, setHydrated] = useState(false);
   const blobUrls = useRef(new Set());
 
@@ -37,7 +43,9 @@ export function PhotosProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const persisted = await listShots();
+      // Only this event's captures. In local-only mode getEventId() is ""
+      // and listShots returns everything — same behavior as before.
+      const persisted = await listShots(getEventId());
       if (cancelled) return;
       if (persisted.length) {
         const rehydrated = persisted
@@ -81,8 +89,7 @@ export function PhotosProvider({ children }) {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const takenAt = Date.now();
     const url = URL.createObjectURL(blob);
-    // Backend only accepts photos right now — videos stay local.
-    const status = mediaType === "photo" && hasBackend() ? "pending" : "local";
+    const status = hasBackend() ? "pending" : "local";
     const attribution = {
       guestId: guest.id,
       guestFirstName: guest.firstName,
@@ -130,12 +137,30 @@ export function PhotosProvider({ children }) {
                 url: r.url,
                 takenAt: r.takenAt,
                 status: "synced",
+                // Attribution must survive the trip — the lightbox caption
+                // ("by First Last · time") reads these fields.
+                guestId: r.guestId,
+                guestFirstName: r.guestFirstName,
+                guestLastName: r.guestLastName,
               }));
-            if (!fresh.length) return prev;
-            since = Math.max(since, ...fresh.map((s) => s.takenAt));
-            return [...fresh, ...prev].sort((a, b) => b.takenAt - a.takenAt);
+            // Backfill serverUrl on our own uploads when the poll echoes
+            // them back, so every synced record carries the server copy.
+            const byServerId = new Map(res.shots.map((r) => [r.id, r]));
+            let next = prev.map((s) => {
+              if (!s.serverId || s.serverUrl) return s;
+              const echo = byServerId.get(s.serverId);
+              return echo ? { ...s, serverUrl: echo.url } : s;
+            });
+            if (fresh.length) {
+              next = [...fresh, ...next].sort((a, b) => b.takenAt - a.takenAt);
+            }
+            return next;
           });
-          since = Math.max(since, ...res.shots.map((r) => r.takenAt));
+          // Keep a 60s overlap: another phone's slow upload can land with a
+          // client takenAt older than our cursor. Re-fetching the window is
+          // cheap and the id dedupe above eats the repeats.
+          const maxTakenAt = Math.max(...res.shots.map((r) => r.takenAt));
+          since = Math.max(since, maxTakenAt - 60_000);
         }
       } catch { /* one bad poll never breaks the loop */ }
       if (!cancelled) timer = setTimeout(poll, POLL_MS);

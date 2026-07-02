@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useOutletContext } from "react-router-dom";
-import { COUPLE, COUPLE_NAMES, SCHEDULE, DRESS_CODE } from '@/config/couple.js';
+import { splitCoupleNames, useEventContent } from '@/state/eventContent.js';
 import { usePhotos } from '@/state/PhotosContext.jsx';
 import CapturedStrip from '@/features/tonight/CapturedStrip.jsx';
 import NightTable from '@/features/tonight/NightTable.jsx';
@@ -25,7 +25,8 @@ const HERO_ITEM = {
 export default function Tonight() {
   const { shots } = usePhotos();
   const { openCamera } = useOutletContext();
-  const [first, second] = COUPLE_NAMES;
+  const content = useEventContent();
+  const [first, second] = splitCoupleNames(content);
   const [showScrollCue, setShowScrollCue] = useState(true);
   // The home-page rails are stills-only. Videos live in their own section
   // in the gallery and shouldn't autoplay on the cover page.
@@ -48,7 +49,7 @@ export default function Tonight() {
     <>
       <section className="hero" id="hero">
         <div className="hero-media" aria-hidden>
-          <div className="hero-bg" />
+          <div className="hero-bg" style={{ backgroundImage: `url("${content.heroImageUrl}")` }} />
           <div className="hero-vignette" />
         </div>
 
@@ -58,14 +59,14 @@ export default function Tonight() {
           animate="visible"
           variants={HERO_STAGGER}
         >
-          <motion.p className="hero-eyebrow" variants={HERO_ITEM}>{COUPLE.date}</motion.p>
+          <motion.p className="hero-eyebrow" variants={HERO_ITEM}>{content.dateDisplay}</motion.p>
           <motion.h1 className="hero-title" variants={HERO_ITEM}>
             <span className="hero-name">{first}</span>
-            <span className="hero-amp">&amp;</span>
-            <span className="hero-name">{second}</span>
+            {second && <span className="hero-amp">&amp;</span>}
+            {second && <span className="hero-name">{second}</span>}
           </motion.h1>
           <motion.p className="hero-lede" variants={HERO_ITEM}>
-            Capture a moment — it joins the shared gallery the instant you snap it.
+            {content.heroLede}
           </motion.p>
 
           <motion.div className="hero-cta" variants={HERO_ITEM}>
@@ -74,7 +75,7 @@ export default function Tonight() {
                 <HeroCameraIcon />
                 <span>Take a photo</span>
               </button>
-              <Link className="cta cta-ghost" to="/gallery">
+              <Link className="cta cta-ghost" to="gallery">
                 <span>See the gallery</span>
               </Link>
             </div>
@@ -133,8 +134,8 @@ function parseScheduleTime(time, dateISO) {
  * "current" is the most recent row whose time has already passed, but
  * only while the next row is still in the future.
  */
-function scheduleStatus(rows, now) {
-  const stamps = rows.map((r) => parseScheduleTime(r.time, COUPLE.dateISO));
+function scheduleStatus(rows, now, dateISO) {
+  const stamps = rows.map((r) => parseScheduleTime(r.time, dateISO));
   if (stamps.some((s) => s == null)) return rows.map(() => "upcoming");
   let currentIdx = -1;
   for (let i = 0; i < stamps.length; i++) {
@@ -148,27 +149,31 @@ function scheduleStatus(rows, now) {
 }
 
 function Schedule() {
+  const { schedule, dressCode, dateISO } = useEventContent();
   // 30s tick keeps "now" honest without burning render cycles.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
-  const statuses = scheduleStatus(SCHEDULE, now);
+  const statuses = scheduleStatus(schedule, now, dateISO);
+  if (!schedule.length) return null;
 
   return (
     <section className="tn-section section-band section-band--cream">
       <div className="section-inner">
         <header className="tn-head">
           <h2 className="tn-title display-title">Tonight's flow</h2>
-          <span className="dress-chip">
-            <span className="dress-chip-dot" />
-            {DRESS_CODE}
-          </span>
+          {dressCode && (
+            <span className="dress-chip">
+              <span className="dress-chip-dot" />
+              {dressCode}
+            </span>
+          )}
         </header>
 
         <ol className="timeline" aria-label="Schedule">
-          {SCHEDULE.map((row, i) => (
+          {schedule.map((row, i) => (
             <li className={`tl-row tl-row--${statuses[i]}`} key={row.title}>
               <div className="tl-time">{row.time}</div>
               <div className="tl-marker" aria-hidden>

@@ -4,7 +4,7 @@ import CameraView from '@/features/camera/CameraView.jsx';
 import PhotoGrid from '@/features/gallery/PhotoGrid.jsx';
 import Lightbox from '@/features/gallery/Lightbox.jsx';
 import { usePhotos } from '@/state/PhotosContext.jsx';
-import { hasBackend, matchSelfie } from '@/services/api/index.js';
+import { hasBackend, matchSelfie, patchSession } from '@/services/api/index.js';
 import EmptyState from '@/components/ui/EmptyState.jsx';
 import { getGuest, isValidName, subscribeGuest, updateGuest } from '@/state/guest.js';
 
@@ -185,6 +185,9 @@ function NameEditor() {
     e.preventDefault();
     if (!canSave) return;
     updateGuest({ firstName, lastName });
+    // Mirror to the server. Past photo attributions stay as they were —
+    // snapshot-not-backfill (docs/auth.md).
+    patchSession({ firstName, lastName }).catch(() => {});
     setDirty(false);
     setSavedAt(Date.now());
     // Clear the "Saved" chip after a beat.

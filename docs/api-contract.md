@@ -2,6 +2,23 @@
 
 Every endpoint the client calls. If it isn't here, the frontend must not call it.
 
+> **2026-07-02 addendum — admin + routing rework.** Guest URLs moved from
+> `?event=<slug>` to path routes `/e/<slug>`. New endpoints (all admin ones
+> take the `x-admin-passcode` header, no guest session):
+>
+> - `GET /api/events` — list events with `guests`/`photos`/`videos` counts.
+> - `POST /api/events` — create `{ title, slug?, startsAt, endsAt, content? }` (slug derived from title when omitted).
+> - `PATCH /api/events/:id` — partial update of `{ title, startsAt, endsAt, content }`.
+> - `DELETE /api/events/:id` — hard delete: storage objects then rows → `{ ok, deletedPhotos, deletedVideos }`.
+> - `DELETE /api/events/:id/photos/:photoId` — per-photo delete → `{ ok }`.
+> - `GET /api/events/:id/photos` (and `/videos`) — also accept `x-admin-passcode` instead of a guest session.
+> - `GET /api/manifest?event=<slug|uuid>` — per-event PWA manifest with `start_url: /e/<slug>` (public).
+>
+> Known deviations that stand: photo body cap is **4 MB** (`payload_too_large`);
+> videos use two-step init/confirm with guest-scoped storage keys; match takes a
+> JSON embedding; `Idempotency-Key` and edge rate-limit bucketing below are still
+> **not implemented** (dedupe is by content hash).
+
 - **Base URL**: `VITE_API_BASE` (see [.env.example](../.env.example)).
 - **Auth**: signed cookie `moment.sid` on every non-session endpoint. Set by `POST /api/session`. See [auth.md](./auth.md).
 - **Content type**: JSON in, JSON out — except upload endpoints which take `multipart/form-data`.
