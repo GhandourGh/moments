@@ -1,6 +1,5 @@
 /**
- * On-demand gallery face indexing — runs only from /me, never on upload.
- *
+ * Gallery face indexing — runs only when a guest explicitly starts a scan on /me.
  * Downloads each event photo once per session, extracts face descriptors
  * on-device, and posts them to the embeddings API so match_faces can run.
  */
@@ -23,22 +22,29 @@ async function blobFromShot(shot, signal) {
   return res.blob();
 }
 
-/** Index photos missing server-side embeddings. Safe to call repeatedly. */
-export async function ensureGalleryIndexed(shots, { signal } = {}) {
-  if (!enabled()) return { indexed: 0 };
+/**
+ * Index photos missing server-side embeddings.
+ * @param {object[]} shots
+ * @param {{ signal?: AbortSignal, onProgress?: (p: { scanned: number, total: number }) => void }} opts
+ */
+export async function ensureGalleryIndexed(shots, { signal, onProgress } = {}) {
+  if (!enabled()) return { indexed: 0, scanned: 0, total: 0 };
   const pending = shots.filter((s) => {
     if (s.seed || (s.mediaType ?? "photo") === "video") return false;
     const id = s.serverId;
     return id && !indexed.has(id) && s.url;
   });
-  if (!pending.length) return { indexed: 0 };
+  const total = pending.length;
+  if (!total) {
+    onProgress?.({ scanned: 0, total: 0 });
+    return { indexed: 0, scanned: 0, total: 0 };
+  }
 
   if (inflight) return inflight;
 
   inflight = (async () => {
     let done = 0;
-    // Descriptors are extracted per photo but posted in batches — one request
-    // per ~10 photos instead of per photo (the endpoint accepts up to 50).
+    let scanned = 0;
     const BATCH = 10;
     let batch = [];
 
@@ -50,7 +56,6 @@ export async function ensureGalleryIndexed(shots, { signal } = {}) {
         await postFaceEmbeddings(items, { signal });
         done += items.length;
       } catch {
-        /* best-effort — the next /me visit re-tries unposted photos */
         items.forEach((it) => indexed.delete(it.photoId));
       }
     };
@@ -68,12 +73,19 @@ export async function ensureGalleryIndexed(shots, { signal } = {}) {
         /* best-effort — one bad photo must not block the rest */
       } finally {
         indexed.add(photoId);
+        scanned += 1;
+        onProgress?.({ scanned, total });
       }
       if (batch.length >= BATCH) await flush();
     }
     await flush();
-    return { indexed: done };
+    return { indexed: done, scanned, total };
   })().finally(() => { inflight = null; });
 
   return inflight;
+}
+
+/** Clear session index cache so a rescan re-processes photos. */
+export function resetGalleryIndexSession() {
+  indexed.clear();
 }

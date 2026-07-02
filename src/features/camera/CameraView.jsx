@@ -444,15 +444,26 @@ export default function CameraView({
             </div>
             <div className="cam-bottom-side cam-bottom-side--end">
               {!pending && !error && !recording && (
-                <button
-                  type="button"
-                  className="cam-icon-btn cam-flip-btn"
-                  onClick={flipCamera}
-                  aria-label="Flip camera"
-                  title="Flip camera"
-                >
-                  <FlipGlyph />
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="cam-icon-btn cam-library-btn"
+                    onClick={openLibrary}
+                    aria-label="Upload from library"
+                    title="Upload from library"
+                  >
+                    <LibraryGlyph />
+                  </button>
+                  <button
+                    type="button"
+                    className="cam-icon-btn cam-flip-btn"
+                    onClick={flipCamera}
+                    aria-label="Flip camera"
+                    title="Flip camera"
+                  >
+                    <FlipGlyph />
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -490,6 +501,17 @@ function CloseGlyph() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
          strokeWidth="2" strokeLinecap="round" aria-hidden>
       <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+function LibraryGlyph() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <circle cx="9" cy="9" r="1.6" />
+      <path d="M21 15.5 16.5 11 6 21" />
     </svg>
   );
 }

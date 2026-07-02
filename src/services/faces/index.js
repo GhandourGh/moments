@@ -2,7 +2,7 @@
  * On-device face embeddings for /me only — not used on the upload path.
  *
  * Uses @vladmandic/face-api (tiny detector + 68-landmark + recognition net,
- * ~7 MB of weights served from /models, lazy-loaded on first /me visit).
+ * ~7 MB of weights served from /models, lazy-loaded when a guest starts a scan).
  * Descriptors are 128-dim L2-normalised vectors; the server matches them
  * with pgvector cosine search (moment.match_faces). Raw selfies never leave
  * the phone. Gallery photos are indexed on-demand from /me via galleryIndex.
@@ -96,7 +96,8 @@ export async function descriptorForSelfie(blob) {
   }
 }
 
-/** Kick off the model download early (e.g. when /me mounts). */
-export function warmup() {
-  if (enabled()) ensureModels().catch(() => {});
+/** Load face models — call only when the guest explicitly starts a scan. */
+export function loadFaceModels() {
+  if (!enabled()) return Promise.resolve(null);
+  return ensureModels();
 }

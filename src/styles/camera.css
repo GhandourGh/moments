@@ -149,8 +149,10 @@
 .cam-bottom-side { min-height: 1px; }
 .cam-bottom-side--end {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
   padding-bottom: 6px;
 }
 .cam-flip-btn { flex-shrink: 0; }
