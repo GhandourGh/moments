@@ -3,11 +3,16 @@
 .admin {
   max-width: 960px;
   margin: 0 auto;
-  padding: 28px 20px 56px;
+  padding:
+    max(28px, env(safe-area-inset-top, 0px))
+    max(20px, env(safe-area-inset-right, 0px))
+    max(56px, env(safe-area-inset-bottom, 0px))
+    max(20px, env(safe-area-inset-left, 0px));
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .admin-header {
@@ -442,6 +447,21 @@
 .btn-danger:disabled {
   opacity: 0.55;
   cursor: wait;
+}
+
+@media (max-width: 640px) {
+  .admin-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .admin-host-link {
+    align-self: flex-start;
+    margin-top: 0;
+  }
+  .admin-event-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 720px) {

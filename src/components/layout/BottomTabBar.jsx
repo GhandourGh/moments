@@ -11,7 +11,10 @@ export default function BottomTabBar({ onCapture }) {
   const showStory = features.storyNav !== false && features.story !== false;
 
   return (
-    <nav className="tabbar" aria-label="Primary">
+    <nav
+      className={`tabbar${showStory ? "" : " tabbar--compact"}`}
+      aria-label="Primary"
+    >
       <TabLink to="." label="Tonight" icon={<SparkIcon />} end />
       <TabLink to="gallery" label="Gallery" icon={<GridIcon />} />
 

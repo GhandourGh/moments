@@ -384,11 +384,24 @@ button.mem-card:active {
 }
 
 @media (max-width: 480px) {
-  .ntable { padding-bottom: 36px; }
+  .dress-chip {
+    white-space: normal;
+    text-align: center;
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .ntable { padding: 28px 0 36px; }
   .ntable-inner { padding: 0 16px; }
   .ntable-grid { gap: 8px; }
   .ntable-slot-0 { margin-bottom: 6px; }
   .ntable-slot-2 { margin-bottom: 4px; }
+}
+
+@media (max-width: 380px) {
+  .tl-row { grid-template-columns: 64px 18px 1fr; gap: 8px; }
+  .tl-time { font-size: 16px; }
+  .tab-label { font-size: 9px; letter-spacing: 0.1em; }
+  .tabbar-capture { width: 52px; height: 52px; margin-top: -18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

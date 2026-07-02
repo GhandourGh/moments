@@ -104,4 +104,6 @@
   }
   .chap-rev { direction: ltr; } /* reverse layout doesn't help on single column */
   .chap-media { aspect-ratio: 3 / 4; }
+  .chap-title { font-size: clamp(26px, 7vw, 40px); }
+  .story-foot { padding: 32px 0 8px; margin-top: 24px; }
 }

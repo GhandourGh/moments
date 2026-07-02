@@ -5,6 +5,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .host {
@@ -69,6 +70,8 @@
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .host-events {
@@ -489,6 +492,21 @@
 }
 
 @media (max-width: 480px) {
+  .host {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .host-card {
+    padding: 16px;
+  }
+  .host-head-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .host-head-row .btn-text {
+    align-self: flex-start;
+    padding-left: 0;
+  }
   .host-dates,
   .host-grid {
     grid-template-columns: 1fr;
@@ -504,8 +522,17 @@
     align-items: flex-start;
     gap: 6px;
   }
+  .host-event-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
   .host-photo-grid {
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  }
+  .host-qr {
+    width: min(220px, 100%);
+    height: auto;
+    aspect-ratio: 1;
   }
 }
 

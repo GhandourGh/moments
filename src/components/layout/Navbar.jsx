@@ -7,7 +7,7 @@ export default function Navbar() {
   const showInitials = features.navbarInitials !== false && Boolean(initials?.trim());
   const showStory = features.storyNav !== false && features.story !== false;
   return (
-    <header className="nav">
+    <header className={`nav${showInitials ? "" : " nav--no-initials"}`}>
       <div className="nav-inner">
         <NavLink to="." className="nav-brand" aria-label="Home">
           <img src="/logo.svg" alt="" className="nav-logo" />

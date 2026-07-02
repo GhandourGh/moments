@@ -87,7 +87,7 @@
   margin: -0.06em 0;
   line-height: 1;
 }
-.hero-name { display: block; }
+.hero-name { display: block; overflow-wrap: anywhere; }
 
 .hero-lede {
   font-size: 19px;

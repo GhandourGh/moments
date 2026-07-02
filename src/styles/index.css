@@ -112,6 +112,7 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  overflow-x: clip;
 }
 
 /* Visible focus rings only when keyboard-focused — calm by default,
@@ -140,7 +141,10 @@ html, body {
   outline-offset: 4px;
 }
 
-#root { min-height: 100vh; }
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
 
 img { max-width: 100%; display: block; }
 img:not(.cam-video):not(.cam-preview):not(.lb-slide) {
@@ -180,6 +184,7 @@ li,
 
 .app {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -330,7 +335,9 @@ li,
    query alongside nav + hero rules, now scoped to just the shared
    scaffolds that remain in this file. */
 @media (max-width: 720px) {
-  .page-section { padding: 16px 16px 40px; }
+  .page-section {
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px));
+  }
   .back-link { margin-bottom: 12px; }
   .section-head { padding-bottom: 12px; margin-bottom: 16px; }
 }
