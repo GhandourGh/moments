@@ -123,12 +123,13 @@ async function uploadOne(rec) {
       if (!durationMs) throw new Error("unmeasurable video");
       result = await uploadVideo(rec.blob, { takenAt: rec.takenAt, durationMs });
     } else {
-      // Free on-device screen before anything leaves the phone. Blocked
-      // photos stay local; no retry — the verdict won't change.
+      // Free on-device screen before anything leaves the phone. Blocked is a
+      // terminal status distinct from "failed": the verdict won't change, so
+      // the UI must not offer a retry.
       const verdict = await moderatePhotoLocal(rec.blob);
       if (!verdict.allowed) {
-        await saveRecord({ ...rec, status: "failed", attempts: MAX_ATTEMPTS });
-        emit(rec.id, { status: "failed", attempts: MAX_ATTEMPTS });
+        await saveRecord({ ...rec, status: "blocked", attempts: MAX_ATTEMPTS });
+        emit(rec.id, { status: "blocked", attempts: MAX_ATTEMPTS });
         return true; // keep draining the rest of the queue
       }
       // Face indexing runs on /me only — uploads skip on-device face detection.

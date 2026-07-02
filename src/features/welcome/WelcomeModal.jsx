@@ -108,14 +108,9 @@ export default function WelcomeModal({ onClose }) {
           You can update it later from your profile.
         </p>
 
-        <ul className="wm-bullets">
-          <li><BulletIcon name="lock" /> Photos stay between you and the couple.</li>
-          <li><BulletIcon name="link" /> Lives in your browser — pin it for one-tap access.</li>
-          <li><BulletIcon name="infinity" /> Take as many photos as you like.</li>
-        </ul>
         <p className="wm-consent">
-          By using the app you agree your photos may be shared with the
-          couple and other guests in this event.
+          Take as many as you like — shots you share are visible to the couple
+          and the other guests at this event.
         </p>
         <div className="wm-actions">
           <AddToHomeScreen variant="compact" className="wm-a2hs" />

@@ -351,23 +351,32 @@ li,
   cursor: pointer;
   transition: transform var(--dur-ui) var(--ease-out), background var(--dur-ui) var(--ease-out), color var(--dur-ui) var(--ease-out), box-shadow var(--dur-ui) var(--ease-out);
 }
-.btn:active { transform: scale(0.96); }
+.btn:active:not(:disabled) { transform: scale(0.96); }
+.btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+  transform: none;
+}
 
 .btn-primary {
   background: var(--ink);
   color: var(--paper);
   box-shadow: 0 8px 22px rgba(28, 26, 23, 0.22);
 }
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: #2b2722;
   box-shadow: 0 12px 28px rgba(28, 26, 23, 0.28);
 }
+.btn-primary:active:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(28, 26, 23, 0.24);
+}
+.btn-primary:disabled { box-shadow: none; }
 .btn-text {
   background: transparent;
   color: var(--ink-soft);
   padding: 12px 14px;
 }
-.btn-text:hover { color: var(--ink); }
+.btn-text:hover:not(:disabled) { color: var(--ink); background: rgba(28, 26, 23, 0.05); }
 
 /* --------------------------- 404 page ----------------------------- */
 

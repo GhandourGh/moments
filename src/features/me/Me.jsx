@@ -12,9 +12,9 @@ import EmptyState from '@/components/ui/EmptyState.jsx';
 import { getGuest, isValidName, subscribeGuest, updateGuest } from '@/state/guest.js';
 
 /**
- * "Find photos I'm in." The selfie matcher is mocked — it returns a
- * deterministic slice of the gallery so the UI feels alive without the
- * backend. Wiring this to a real /match endpoint is a one-function swap.
+ * "Find photos I'm in." The selfie descriptor is computed on-device and
+ * matched server-side (POST /api/events/:id/match); dev without a backend
+ * falls back to a mock slice so the UI can be exercised offline.
  */
 export default function Me() {
   const { shots } = usePhotos();
@@ -35,12 +35,15 @@ export default function Me() {
     [galleryShots]
   );
   const mine = shots.filter((s) => !s.seed); // anything the guest captured
-  // Real match if the backend gave us ids; otherwise a deterministic 1-in-3
-  // slice of the seed gallery so the UI still feels alive in dev / offline.
+  // Real match when the matcher answered. The 1-in-3 mock slice is DEV-ONLY
+  // furniture — showing guests photos they're "in" that they're not in reads
+  // as broken, so production renders the honest empty state instead.
   const matches = selfie
     ? matchIds
       ? shots.filter((s) => matchIds.includes(s.serverId ?? s.id))
-      : shots.filter((_, i) => i % 3 === 0).slice(0, 6)
+      : env.isDev
+        ? shots.filter((_, i) => i % 3 === 0).slice(0, 6)
+        : []
     : [];
 
   // Face models load only on /me — not on the camera upload path.

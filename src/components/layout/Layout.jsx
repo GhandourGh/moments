@@ -83,6 +83,11 @@ function LayoutInner() {
           duration: 5000,
           action: { label: "Retry", onClick: () => retry(id) },
         });
+      } else if (patch.status === "blocked") {
+        // Terminal moderation verdict — retrying can't change it, so no action.
+        show("That photo can't join the shared album — it stays on your device", {
+          duration: 5000,
+        });
       }
     });
   }, [show]);

@@ -188,10 +188,12 @@ export default function HeroCoverField({
             <ImageIcon />
           </span>
           <span className="hero-cover-drop-title">
-            {busy ? "Uploading…" : isAdmin ? "Drop a cover photo here" : "Choose from your files"}
+            {busy ? "Uploading…" : isAdmin ? "Drop a cover photo here" : "Choose a cover photo"}
           </span>
           <span className="hero-cover-drop-sub">
-            {isAdmin ? "or click to browse · JPEG, PNG, WebP · up to 5 MB" : "JPEG, PNG, or WebP"}
+            {isAdmin
+              ? "or click to browse · JPEG, PNG, WebP · up to 5 MB"
+              : "or drag and drop · JPEG, PNG, WebP"}
           </span>
         </button>
       )}

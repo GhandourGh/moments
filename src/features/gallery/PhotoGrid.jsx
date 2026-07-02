@@ -51,10 +51,16 @@ function PlayGlyph() {
   );
 }
 
+const DOT_LABELS = {
+  pending: "Uploading…",
+  failed: "Upload failed — tap to retry",
+  blocked: "Not shared — this photo stays on your device",
+};
+
 function StatusDot({ shot }) {
   const { status } = shot;
-  if (status !== "pending" && status !== "failed") return null;
-  const label = status === "pending" ? "Uploading…" : "Upload failed — tap to retry";
+  const label = DOT_LABELS[status];
+  if (!label) return null;
   return (
     <span
       className={`ph-dot ph-dot-${status}`}
@@ -62,6 +68,7 @@ function StatusDot({ shot }) {
       title={label}
       aria-label={label}
       onClick={(e) => {
+        // Only genuine failures are retryable; a moderation block is final.
         if (status !== "failed") return;
         e.stopPropagation();
         retry(shot.id);
