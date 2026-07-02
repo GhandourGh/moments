@@ -56,6 +56,7 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
   const [closing, setClosing] = useState(false);
   const [cardBusy, setCardBusy] = useState(false);
   const [originalBusy, setOriginalBusy] = useState(false);
+  const [fullReady, setFullReady] = useState(false);
   const requestClose = useCallback(() => {
     if (closing) return;
     setClosing(true);
@@ -82,6 +83,34 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
   }
 
   useEffect(() => { setT({ s: 1, x: 0, y: 0 }); }, [index, current?.id]);
+  useEffect(() => {
+    setFullReady(false);
+    if (!current?.url || current.mediaType === "video") return undefined;
+    const probe = new Image();
+    probe.decoding = "async";
+    probe.src = current.url;
+    if (probe.complete) setFullReady(true);
+    return undefined;
+  }, [index, current?.id, current?.url, current?.mediaType]);
+
+  useEffect(() => {
+    if (!total || current?.mediaType === "video") return undefined;
+    for (const delta of [-1, 1]) {
+      const shot = shots[(index + delta + total) % total];
+      if (!shot || shot.mediaType === "video") continue;
+      if (shot.thumbUrl) {
+        const thumb = new Image();
+        thumb.decoding = "async";
+        thumb.src = shot.thumbUrl;
+      }
+      if (shot.url) {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = shot.url;
+      }
+    }
+    return undefined;
+  }, [index, shots, total, current?.mediaType]);
 
   // --- pointer tracking ---
   const pointers = useRef(new Map()); // pointerId -> { x, y }
@@ -434,32 +463,44 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
             onPointerDown={(e) => e.stopPropagation()}
           />
         ) : (
-          <img
-            ref={imgRef}
-            className="lb-img"
-            src={current.url}
-            alt=""
-            draggable={false}
-            // Stop click bubbling — we handle close via pointerup so the
-            // movement-vs-tap distinction stays clean.
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            style={{
-              transform: `translate3d(${t.x}px, ${t.y}px, 0) scale(${t.s})`,
-              // No transition during a continuous gesture (wheel / pinch / pan)
-              // — that's what was making zoom feel shaky.
-              transition:
-                pointers.current.size || interactingRef.current
-                  ? "none"
-                  : "transform 0.18s ease",
-              cursor: zoomed ? "grab" : "zoom-out",
-              touchAction: "none",
-              willChange: "transform",
-            }}
-          />
+          <div className="lb-img-stack">
+            {current.thumbUrl && !fullReady && (
+              <img
+                className="lb-img lb-img-preview"
+                src={current.thumbUrl}
+                alt=""
+                aria-hidden
+                draggable={false}
+              />
+            )}
+            <img
+              ref={imgRef}
+              className={`lb-img${fullReady ? " lb-img--ready" : " lb-img--loading"}`}
+              src={current.url}
+              alt=""
+              draggable={false}
+              onLoad={() => setFullReady(true)}
+              // Stop click bubbling — we handle close via pointerup so the
+              // movement-vs-tap distinction stays clean.
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+              style={{
+                transform: `translate3d(${t.x}px, ${t.y}px, 0) scale(${t.s})`,
+                // No transition during a continuous gesture (wheel / pinch / pan)
+                // — that's what was making zoom feel shaky.
+                transition:
+                  pointers.current.size || interactingRef.current
+                    ? "none"
+                    : "transform 0.18s ease, opacity 0.2s ease",
+                cursor: zoomed ? "grab" : "zoom-out",
+                touchAction: "none",
+                willChange: "transform",
+              }}
+            />
+          </div>
         )}
 
         {total > 1 && !zoomed && (

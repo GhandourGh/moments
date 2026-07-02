@@ -71,7 +71,8 @@ export async function listMedia(
   table: "photos" | "videos",
   bucket: string,
   eventId: string,
-  params: ListParams
+  params: ListParams,
+  routeId: string,
 ): Promise<void> {
   const db = admin();
   let query = db
@@ -107,6 +108,9 @@ export async function listMedia(
   const items = (rows ?? []).map((r: any) => ({
     id: r.id,
     url: urls[r.storage_key] ?? null,
+    ...(table === "photos"
+      ? { thumbUrl: `/api/events/${encodeURIComponent(routeId)}/photos/${r.id}/thumb` }
+      : {}),
     takenAt: r.taken_at,
     width: r.width,
     height: r.height,

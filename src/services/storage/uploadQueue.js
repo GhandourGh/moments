@@ -163,6 +163,7 @@ async function uploadOne(rec) {
       serverId: result.id,
       serverUrl: result.url,
       ...(result.url ? { url: result.url } : {}),
+      ...(result.thumbUrl ? { thumbUrl: result.thumbUrl } : {}),
     });
     // If the upload response omitted a signed URL, pull one from the gallery API.
     if (!result.url) {
@@ -172,7 +173,11 @@ async function uploadOne(rec) {
           const match = res.shots?.find((s) => s.id === result.id);
           if (match?.url) {
             saveRecord({ ...next, serverUrl: match.url });
-            emit(rec.id, { serverUrl: match.url, url: match.url });
+            emit(rec.id, {
+              serverUrl: match.url,
+              url: match.url,
+              ...(match.thumbUrl ? { thumbUrl: match.thumbUrl } : {}),
+            });
           }
         })
         .catch(() => {});

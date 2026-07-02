@@ -6,6 +6,7 @@ import { isAdmin, requireSession } from "../../_lib/session.js";
 import { isSha256, isUuid } from "../../_lib/validate.js";
 import { resolveEvent } from "../../_lib/events.js";
 import { eventEnded, listMedia, parseFaces, parseListParams, resolveEventForSession, signedUrlFor } from "../../_lib/media.js";
+import { generateThumbBuffer, thumbStorageKey, ensureThumb } from "../../_lib/thumbs.js";
 import { moderateImage, moderationEnabled } from "../../_lib/ai.js";
 import { captureError, withSentry } from "../../_lib/sentry.js";
 
@@ -83,6 +84,15 @@ async function post(req: VercelRequest, res: VercelResponse, eventId: string, gu
     .upload(storageKey, file.buffer, { contentType: file.mime });
   if (upErr) throw upErr;
 
+  try {
+    const thumbBuf = await generateThumbBuffer(file.buffer);
+    await db.storage.from("photos").upload(thumbStorageKey(eventId, photoId), thumbBuf, {
+      contentType: "image/jpeg",
+    });
+  } catch (err) {
+    captureError(err as Error, { where: "thumb upload", photoId, eventId });
+  }
+
   const takenAtRaw = Date.parse(body.fields.takenAt ?? "");
   const { error: insErr } = await db.from("photos").insert({
     id: photoId,
@@ -121,7 +131,29 @@ async function post(req: VercelRequest, res: VercelResponse, eventId: string, gu
   }
 
   const url = await signedUrlFor("photos", storageKey);
-  res.status(200).json({ accepted: [photoId], skipped: [], total: await total(), url });
+  const routeId = String(req.query.id ?? eventId);
+  const thumbUrl = `/api/events/${encodeURIComponent(routeId)}/photos/${photoId}/thumb`;
+  res.status(200).json({ accepted: [photoId], skipped: [], total: await total(), url, thumbUrl });
+}
+
+async function getPhotoThumb(res: VercelResponse, eventId: string, photoId: string) {
+  if (!isUuid(photoId)) return sendError(res, "not_found");
+  const db = admin();
+  const { data: photo, error } = await db
+    .from("photos")
+    .select("storage_key")
+    .eq("id", photoId)
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!photo) return sendError(res, "not_found");
+
+  const thumb = await ensureThumb("photos", eventId, photoId, photo.storage_key);
+  if (!thumb) return sendError(res, "not_found");
+
+  res.setHeader("Content-Type", "image/jpeg");
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.status(200).send(thumb);
 }
 
 async function getPhotoRaw(res: VercelResponse, eventId: string, photoId: string) {
@@ -185,7 +217,7 @@ export default withSentry(async (req, res) => {
     if (!rateLimit(res, `photos-admin:${clientIp(req)}`, 30)) return;
     const ev = await resolveEvent(String(req.query.id ?? ""));
     if (!ev) return sendError(res, "not_found");
-    return listMedia(res, "photos", "photos", ev.id, parseListParams(req));
+    return listMedia(res, "photos", "photos", ev.id, parseListParams(req), String(req.query.id ?? ""));
   }
 
   const session = await requireSession(req, res);
@@ -195,10 +227,13 @@ export default withSentry(async (req, res) => {
 
   if (req.method === "GET") {
     if (!rateLimit(res, `photos-list:${session.guestId}`, 240)) return;
+    if (photoId && req.query.asset === "thumb") {
+      return getPhotoThumb(res, ev.id, photoId);
+    }
     if (photoId && req.query.asset === "raw") {
       return getPhotoRaw(res, ev.id, photoId);
     }
-    return listMedia(res, "photos", "photos", ev.id, parseListParams(req));
+    return listMedia(res, "photos", "photos", ev.id, parseListParams(req), String(req.query.id ?? ""));
   }
 
   if (!rateLimit(res, `photos-up:${session.guestId}`, 30)) return;

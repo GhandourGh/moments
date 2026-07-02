@@ -113,7 +113,7 @@ export default withSentry(async (req, res) => {
     if (!rateLimit(res, `videos-admin:${clientIp(req)}`, 30)) return;
     const ev = await resolveEvent(String(req.query.id ?? ""));
     if (!ev) return sendError(res, "not_found");
-    return listMedia(res, "videos", "videos", ev.id, parseListParams(req));
+    return listMedia(res, "videos", "videos", ev.id, parseListParams(req), String(req.query.id ?? ""));
   }
 
   const session = await requireSession(req, res);
@@ -123,7 +123,7 @@ export default withSentry(async (req, res) => {
 
   if (req.method === "GET") {
     if (!rateLimit(res, `videos-list:${session.guestId}`, 240)) return;
-    return listMedia(res, "videos", "videos", ev.id, parseListParams(req));
+    return listMedia(res, "videos", "videos", ev.id, parseListParams(req), String(req.query.id ?? ""));
   }
 
   if (!rateLimit(res, `videos-up:${session.guestId}`, 10)) return;

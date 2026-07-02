@@ -1,6 +1,7 @@
 import React from "react";
 import { useEventContent } from '@/state/eventContent.js';
 import PhotoAwaitPlaceholder from '@/components/ui/PhotoAwaitPlaceholder.jsx';
+import ProgressiveImage from '@/components/ui/ProgressiveImage.jsx';
 
 /**
  * Branded keepsake frame — couple initials + wedding date under the photo.
@@ -33,8 +34,13 @@ export default function MemoryCard({
         : {})}
     >
       <div className="mem-card-photo">
-        {shot.url ? (
-          <img src={shot.url} alt="" draggable={false} loading="lazy" />
+        {shot.url || shot.thumbUrl ? (
+          <ProgressiveImage
+            src={shot.url}
+            thumbSrc={shot.thumbUrl}
+            variant="frame"
+            eager
+          />
         ) : (
           <PhotoAwaitPlaceholder variant="frame" />
         )}
