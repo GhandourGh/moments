@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import Navbar from '@/components/layout/Navbar.jsx';
 import BottomTabBar from '@/components/layout/BottomTabBar.jsx';
@@ -44,6 +44,7 @@ function LayoutInner() {
   const { addShot, shots } = usePhotos();
   const { show } = useToast();
   const navigate = useNavigate();
+  const { eventSlug } = useParams();
   const [cameraOpen, setCameraOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
 
@@ -71,8 +72,9 @@ function LayoutInner() {
 
   const handleViewLastPhoto = useCallback(() => {
     setCameraOpen(false);
-    navigate("gallery"); // relative — stays under the current /e/<slug>
-  }, [navigate]);
+    if (!eventSlug) return;
+    navigate(`/e/${encodeURIComponent(eventSlug)}/gallery`);
+  }, [navigate, eventSlug]);
 
   // Upload-failure toast with one-tap retry. Only fires for terminal failures
   // (after the queue has exhausted its backoff and flipped the shot to "failed").

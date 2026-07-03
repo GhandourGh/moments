@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { downscaleImageFile } from '@/features/camera/capture.js';
 import { useCamera } from '@/features/camera/useCamera.js';
-import LazyImage from '@/components/ui/LazyImage.jsx';
 
 function formatElapsed(ms) {
   const total = Math.floor(ms / 1000);
@@ -277,6 +276,17 @@ export default function CameraView({
           >
             <CloseGlyph />
           </button>
+          {!pending && !recording && (
+            <button
+              type="button"
+              className="cam-icon-btn cam-library-btn"
+              onClick={openLibrary}
+              aria-label="Upload from library"
+              title="Upload from library"
+            >
+              <LibraryGlyph />
+            </button>
+          )}
           {!pending && !error && !permissionGate && isSelfie && !recording && (
             <button
               type="button"
@@ -375,13 +385,7 @@ export default function CameraView({
                   aria-label={photoCount > 0 ? `View gallery (${photoCount} photo${photoCount === 1 ? "" : "s"})` : "View last photo"}
                   title="Last photo"
                 >
-                  <LazyImage
-                    src={lastPhotoUrl}
-                    alt=""
-                    variant="dark"
-                    loading="eager"
-                    className="cam-last-photo-img"
-                  />
+                  <img src={lastPhotoUrl} alt="" loading="eager" decoding="async" />
                   {photoCount > 0 && (
                     <span className="cam-last-photo-count tabular-nums" aria-hidden>
                       {photoCount > 99 ? "99+" : photoCount}
@@ -450,27 +454,16 @@ export default function CameraView({
               )}
             </div>
             <div className="cam-bottom-side cam-bottom-side--end">
-              {!pending && !error && !recording && (
-                <>
-                  <button
-                    type="button"
-                    className="cam-icon-btn cam-library-btn"
-                    onClick={openLibrary}
-                    aria-label="Upload from library"
-                    title="Upload from library"
-                  >
-                    <LibraryGlyph />
-                  </button>
-                  <button
-                    type="button"
-                    className="cam-icon-btn cam-flip-btn"
-                    onClick={flipCamera}
-                    aria-label="Flip camera"
-                    title="Flip camera"
-                  >
-                    <FlipGlyph />
-                  </button>
-                </>
+              {!pending && !error && !recording && !permissionGate && (
+                <button
+                  type="button"
+                  className="cam-icon-btn cam-flip-btn"
+                  onClick={flipCamera}
+                  aria-label="Flip camera"
+                  title="Flip camera"
+                >
+                  <FlipGlyph />
+                </button>
               )}
             </div>
           </div>
