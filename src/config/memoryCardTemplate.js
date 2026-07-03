@@ -1,17 +1,16 @@
 import { getEventContent } from '@/state/eventContent.js';
 
-/** Portrait keepsake — 2:3, sized for phone saves and prints. */
+/** Portrait keepsake — width fixed; height follows photo + footer content. */
 export const MEMORY_CARD_EXPORT = {
   width: 1200,
-  height: 1800,
   photoAspect: 4 / 5,
 };
 
 const W = MEMORY_CARD_EXPORT.width;
-const H = MEMORY_CARD_EXPORT.height;
 const SIDE = 48;
 const PHOTO_RADIUS = 18;
 const PHOTO_GAP = 32;
+const BOTTOM_PAD = 48;
 
 /** Filename for branded keepsake download. */
 export function memoryCardDownloadName(shotId) {
@@ -148,12 +147,33 @@ function layoutCard() {
   return { photoX, photoY, photoW, photoH, footTop };
 }
 
+/** Canvas height — tight to photo + caption, no trailing blank paper. */
+function exportHeight(initials, dateDisplay) {
+  const { footTop } = layoutCard();
+  const hasInitials = Boolean(initials?.trim());
+  const hasDate = Boolean(dateDisplay?.trim());
+
+  if (!hasInitials && !hasDate) {
+    return footTop + 2 + BOTTOM_PAD;
+  }
+
+  if (hasDate) {
+    const dateBaseline = footTop + (hasInitials ? 108 : 64);
+    return dateBaseline + 10 + BOTTOM_PAD;
+  }
+
+  return footTop + 64 + 10 + BOTTOM_PAD;
+}
+
 /**
  * Rasterize the memory card frame + photo to a JPEG Blob (matches MemoryCard export layout).
  */
 export async function composeMemoryCardBlob(imageUrl) {
   await ensureFonts();
   const img = await loadImageForExport(imageUrl);
+
+  const { initials, dateDisplay } = getEventContent();
+  const H = exportHeight(initials, dateDisplay);
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -163,7 +183,6 @@ export async function composeMemoryCardBlob(imageUrl) {
 
   const { photoX, photoY, photoW, photoH, footTop } = layoutCard();
   const cx = W / 2;
-  const { initials, dateDisplay } = getEventContent();
 
   const bg = ctx.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, "#fffefb");
