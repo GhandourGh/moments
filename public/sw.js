@@ -7,8 +7,8 @@
  *
  * Cache name is versioned so bumping the constant invalidates old assets.
  */
-// v10: cache stable hero URLs (/api/events/:slug/hero) across refreshes.
-const VERSION = "fg-v10";
+// v11: cache stable gallery photo URLs (/api/events/:slug/photos/:id).
+const VERSION = "fg-v11";
 const SHELL = ["/", "/logo.svg", "/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 function isPhotoAsset(pathname) {
@@ -21,6 +21,10 @@ function isManifest(pathname) {
 
 function isHeroApi(pathname) {
   return /^\/api\/events\/[^/]+\/hero$/.test(pathname);
+}
+
+function isGalleryPhotoApi(pathname) {
+  return /^\/api\/events\/[^/]+\/photos\/[0-9a-f-]{36}$/i.test(pathname);
 }
 
 self.addEventListener("install", (event) => {
@@ -45,8 +49,8 @@ self.addEventListener("fetch", (event) => {
 
   const pathname = new URL(req.url).pathname;
 
-  // Cache-first for the stable hero image — small, public, immutable.
-  if (isHeroApi(pathname)) {
+  // Cache-first for stable hero + gallery photo proxies (same URL every visit).
+  if (isHeroApi(pathname) || isGalleryPhotoApi(pathname)) {
     event.respondWith(
       caches.match(req).then((cached) => {
         if (cached) return cached;

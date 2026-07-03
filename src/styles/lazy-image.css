@@ -26,7 +26,7 @@
   object-fit: cover;
   display: block;
   opacity: 0;
-  transition: opacity 0.32s ease;
+  transition: opacity 0.15s ease;
 }
 
 .lazy-img--inline .lazy-img-el {

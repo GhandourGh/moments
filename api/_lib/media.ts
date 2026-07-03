@@ -37,6 +37,16 @@ export interface ListParams {
   cursor?: { t: string; id: string };
 }
 
+export interface ListMediaOptions {
+  /** When set, photo rows use stable same-origin URLs (cacheable) instead of signed storage URLs. */
+  eventSlug?: string;
+}
+
+/** Stable gallery URL — browser + SW can cache across refreshes. */
+export function photoProxyUrl(slug: string, photoId: string): string {
+  return `/api/events/${encodeURIComponent(slug)}/photos/${encodeURIComponent(photoId)}?asset=raw`;
+}
+
 export function parseListParams(req: VercelRequest): ListParams {
   const q = req.query;
   const limit = Math.min(Math.max(parseInt(String(q.limit ?? "100"), 10) || 100, 1), 500);
@@ -71,7 +81,8 @@ export async function listMedia(
   table: "photos" | "videos",
   bucket: string,
   eventId: string,
-  params: ListParams
+  params: ListParams,
+  options: ListMediaOptions = {},
 ): Promise<void> {
   const db = admin();
   let query = db
@@ -101,12 +112,15 @@ export async function listMedia(
   if (error) throw error;
   if (cErr) throw cErr;
 
-  const keys = (rows ?? []).map((r: any) => r.storage_key);
-  const urls = await signStorageUrls(bucket, keys);
+  const useProxy = table === "photos" && options.eventSlug;
+  const keys = useProxy ? [] : (rows ?? []).map((r: any) => r.storage_key);
+  const urls = useProxy ? {} : await signStorageUrls(bucket, keys);
 
   const items = (rows ?? []).map((r: any) => ({
     id: r.id,
-    url: urls[r.storage_key] ?? null,
+    url: useProxy
+      ? photoProxyUrl(options.eventSlug!, r.id)
+      : (urls[r.storage_key] ?? null),
     takenAt: r.taken_at,
     width: r.width,
     height: r.height,

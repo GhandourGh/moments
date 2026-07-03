@@ -140,7 +140,7 @@ async function getPhotoRaw(res: VercelResponse, eventId: string, photoId: string
   if (dlErr || !data) return sendError(res, "not_found");
 
   res.setHeader("Content-Type", photo.mime || "image/jpeg");
-  res.setHeader("Cache-Control", "private, max-age=3600");
+  res.setHeader("Cache-Control", "private, max-age=86400, stale-while-revalidate=604800");
   res.status(200).send(Buffer.from(await data.arrayBuffer()));
 }
 
@@ -198,7 +198,7 @@ export default withSentry(async (req, res) => {
     if (photoId && req.query.asset === "raw") {
       return getPhotoRaw(res, ev.id, photoId);
     }
-    return listMedia(res, "photos", "photos", ev.id, parseListParams(req));
+    return listMedia(res, "photos", "photos", ev.id, parseListParams(req), { eventSlug: ev.slug });
   }
 
   if (!rateLimit(res, `photos-up:${session.guestId}`, 30)) return;

@@ -181,7 +181,7 @@ export default function Gallery() {
 
       <GalleryFilters value={filter} onChange={setFilter} />
 
-      {!hydrated ? (
+      {!hydrated && visible.length === 0 ? (
         <GallerySkeleton />
       ) : visible.length === 0 ? (
         <EmptyState {...emptyForFilter(filter, openCamera)} />

@@ -3,6 +3,9 @@
  * localStorage is a legacy fallback we no longer read on boot.
  */
 
+import { getActiveEvent } from '@/state/activeEvent.js';
+import { hasBackend } from '@/services/api/index.js';
+
 const SESSION_PREFIX = "fg.shots.session.v1.";
 const LEGACY_PREFIX = "fg.shots.v1.";
 const MAX_SHOTS = 32;
@@ -10,11 +13,11 @@ const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function slimShot(s) {
   if (!s || s.seed) return null;
-  const httpUrl = s.serverUrl
-    || (typeof s.url === "string" && s.url.startsWith("http") ? s.url : "");
-  if (!httpUrl && !s.serverId) return null;
+  const id = s.serverId || s.id;
+  const httpUrl = normalizeShotUrl(s);
+  if (!httpUrl && !id) return null;
   return {
-    id: s.serverId || s.id,
+    id,
     serverId: s.serverId || null,
     url: httpUrl,
     serverUrl: httpUrl,
@@ -25,6 +28,19 @@ function slimShot(s) {
     guestFirstName: s.guestFirstName,
     guestLastName: s.guestLastName,
   };
+}
+
+/** Same-origin proxy URL — stable across refreshes so the browser can cache bytes. */
+export function normalizeShotUrl(s) {
+  if (!s) return "";
+  const id = s.serverId || s.id;
+  const slug = getActiveEvent();
+  if (hasBackend() && slug && id && /^[0-9a-f-]{36}$/i.test(String(id))) {
+    return `/api/events/${encodeURIComponent(slug)}/photos/${encodeURIComponent(id)}?asset=raw`;
+  }
+  const raw = s.serverUrl || (typeof s.url === "string" ? s.url : "");
+  if (raw.startsWith("/api/events/")) return raw;
+  return raw.startsWith("http") ? raw : "";
 }
 
 function readFromStore(store, prefix, eventId) {

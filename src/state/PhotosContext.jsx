@@ -4,14 +4,26 @@ import { deleteShot, listShots } from '@/services/storage/photoStore.js';
 import { enqueue, subscribe, tick } from '@/services/storage/uploadQueue.js';
 import { createSession, fetchShotsSince, getEventId, getServerGuestId, hasBackend } from '@/services/api/index.js';
 import { getGuest, subscribeGuest } from '@/state/guest.js';
-import { preserveShotUrls, readSessionShots, writeShotsCache, clearLegacyShotsCache } from '@/state/shotsCache.js';
+import { preserveShotUrls, readSessionShots, writeShotsCache, normalizeShotUrl } from '@/state/shotsCache.js';
 
 const POLL_MS = 10_000;
 
+function shotsFromSessionCache() {
+  if (!hasBackend()) return null;
+  const eventId = getEventId();
+  if (!eventId) return null;
+  const cached = readSessionShots(eventId);
+  if (!cached.length) return null;
+  return cached.map((s) => ({
+    ...s,
+    url: normalizeShotUrl(s),
+    serverUrl: normalizeShotUrl(s),
+  }));
+}
+
 function initialShots() {
   if (!hasBackend()) return SEED_SHOTS;
-  // Never paint from cache on boot — server reconcile is the source of truth.
-  return [];
+  return shotsFromSessionCache() ?? [];
 }
 
 const PhotosContext = createContext(null);
@@ -29,8 +41,11 @@ function rehydrateRecord(r, trackUrl) {
       guestFirstName: r.guestFirstName,
       guestLastName: r.guestLastName,
     };
-    // Prefer the signed server URL when we have it (survives refresh even if
-    // the blob was evicted from IndexedDB).
+    // Prefer the stable proxy URL when we have a server id (survives refresh).
+    if (r.serverUrl || serverId) {
+      const url = normalizeShotUrl({ serverId, serverUrl: r.serverUrl, url: r.serverUrl });
+      if (url) return { id: serverId || r.id, url, ...base };
+    }
     if (r.serverUrl) {
       return { id: serverId || r.id, url: r.serverUrl, ...base };
     }
@@ -54,18 +69,21 @@ function mergeServerShots(prev, serverShots) {
   const known = new Set(prev.map((s) => s.serverId || s.id));
   const fresh = serverShots
     .filter((r) => !known.has(r.id))
-    .map((r) => ({
-      id: r.id,
-      serverId: r.id,
-      serverUrl: r.url,
-      url: r.url ?? "",
-      takenAt: r.takenAt,
-      status: "synced",
-      mediaType: r.mediaType ?? "photo",
-      guestId: r.guestId,
-      guestFirstName: r.guestFirstName,
-      guestLastName: r.guestLastName,
-    }));
+    .map((r) => {
+      const url = normalizeShotUrl({ serverId: r.id, url: r.url }) || r.url || "";
+      return {
+        id: r.id,
+        serverId: r.id,
+        serverUrl: url,
+        url,
+        takenAt: r.takenAt,
+        status: "synced",
+        mediaType: r.mediaType ?? "photo",
+        guestId: r.guestId,
+        guestFirstName: r.guestFirstName,
+        guestLastName: r.guestLastName,
+      };
+    });
   const byServerId = new Map(serverShots.map((r) => [r.id, r]));
   let next = prev.map((s) => {
     if (!s.serverId) return s;
@@ -77,7 +95,8 @@ function mergeServerShots(prev, serverShots) {
       guestLastName: echo.guestLastName,
     };
     if (!echo.url) return { ...s, ...patch };
-    return { ...s, ...patch, url: echo.url, serverUrl: echo.url };
+    const url = normalizeShotUrl({ serverId: s.serverId, url: echo.url }) || echo.url;
+    return { ...s, ...patch, url, serverUrl: url };
   });
   if (fresh.length) {
     next = [...fresh, ...next].sort((a, b) => b.takenAt - a.takenAt);
@@ -113,7 +132,7 @@ export function PhotosProvider({ children }) {
   // Seeds are dev/offline furniture — with a live backend the gallery must
   // show only real captures, so seed placeholders never mix with them.
   const [shots, setShots] = useState(initialShots);
-  const [hydrated, setHydrated] = useState(false);
+  const [hydrated, setHydrated] = useState(() => !hasBackend());
   const blobUrls = useRef(new Set());
   const shotsRef = useRef(shots);
   shotsRef.current = shots;
@@ -128,7 +147,6 @@ export function PhotosProvider({ children }) {
 
   const bootstrapGallery = useCallback(async (isCancelled) => {
     const eventId = getEventId();
-    clearLegacyShotsCache(eventId);
 
     const [persisted, serverRes] = await Promise.all([
       listShots(eventId),
@@ -153,6 +171,12 @@ export function PhotosProvider({ children }) {
     if (serverRes.ok && Array.isArray(serverRes.shots)) {
       merged = reconcileServerShots(merged, serverRes.shots);
     }
+
+    merged = merged.map((s) => {
+      if (s.seed || s.mediaType === "video") return s;
+      const url = normalizeShotUrl(s);
+      return url ? { ...s, url, serverUrl: url } : s;
+    });
 
     if (!hasBackend() && !merged.length) return SEED_SHOTS;
     return merged;
@@ -310,7 +334,7 @@ export function PhotosProvider({ children }) {
     });
   }, [untrackUrl]);
 
-  const galleryHasShots = hydrated && shots.some((s) => !s.seed && s.mediaType !== "video");
+  const galleryHasShots = shots.some((s) => !s.seed && s.mediaType !== "video");
 
   return (
     <PhotosContext.Provider value={{ shots, hydrated, galleryHasShots, addShot, removeShot }}>

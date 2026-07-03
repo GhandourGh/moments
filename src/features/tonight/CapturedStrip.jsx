@@ -270,7 +270,14 @@ export default function CapturedStrip({ shots }) {
               tabIndex={i >= total ? -1 : 0}
             >
               {s.url ? (
-                <LazyImage src={s.url} alt="" variant="strip" draggable={false} />
+                <LazyImage
+                  src={s.url}
+                  alt=""
+                  variant="strip"
+                  draggable={false}
+                  loading={i < total ? "eager" : "lazy"}
+                  fetchPriority={i % total === 0 ? "high" : undefined}
+                />
               ) : (
                 <PhotoAwaitPlaceholder variant="strip" />
               )}
