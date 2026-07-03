@@ -116,7 +116,8 @@
   box-shadow: 0 0 0 2px var(--brand),
               0 12px 30px rgba(28, 26, 23, 0.12);
 }
-.strip-card img {
+.strip-card img,
+.strip-card .lazy-img-el {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -129,7 +130,8 @@
 
 @media (max-width: 640px) {
   .strip-card { width: 40vw; border-radius: 12px; }
-  .strip-card img { border-radius: 12px; }
+  .strip-card img,
+  .strip-card .lazy-img-el { border-radius: 12px; }
   .strip-head {
     flex-wrap: wrap;
     align-items: flex-end;
@@ -326,7 +328,8 @@ button.mem-card {
     0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
-.mem-card-photo img {
+.mem-card-photo img,
+.mem-card-photo .lazy-img-el {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -414,7 +417,8 @@ button.mem-card {
       0 18px 40px rgba(28, 26, 23, 0.14);
     z-index: 3;
   }
-  button.mem-card:hover .mem-card-photo img {
+  button.mem-card:hover .mem-card-photo img,
+  button.mem-card:hover .mem-card-photo .lazy-img-el {
     transform: scale(1.03);
   }
 }
@@ -452,7 +456,8 @@ button.mem-card:active {
     transition: none;
   }
   button.mem-card { transition: none; }
-  .mem-card-photo img { transition: none; }
+  .mem-card-photo img,
+  .mem-card-photo .lazy-img-el { transition: none; }
 }
 
 /* ---- Tonight: schedule ----------------------------------------- */

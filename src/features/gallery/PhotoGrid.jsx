@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import { retry } from '@/services/storage/uploadQueue.js';
+import LazyImage, { LazyVideo } from '@/components/ui/LazyImage.jsx';
 import PhotoAwaitPlaceholder from '@/components/ui/PhotoAwaitPlaceholder.jsx';
 
 /**
@@ -20,20 +21,13 @@ export default function PhotoGrid({ shots, onOpen }) {
         >
           {s.mediaType === "video" ? (
             <>
-              <video
-                src={s.url}
-                muted
-                playsInline
-                preload="metadata"
-                // Showing the first frame as the tile thumbnail without
-                // shipping a separate poster file.
-              />
+              <LazyVideo src={s.url} />
               <span className="ph-tile-badge" aria-hidden>
                 <PlayGlyph />
               </span>
             </>
           ) : s.url ? (
-            <TileImage src={s.url} />
+            <LazyImage src={s.url} alt="" variant="tile" />
           ) : (
             <PhotoAwaitPlaceholder variant="tile" />
           )}
@@ -41,14 +35,6 @@ export default function PhotoGrid({ shots, onOpen }) {
         </button>
       ))}
     </div>
-  );
-}
-
-function TileImage({ src }) {
-  const [broken, setBroken] = useState(false);
-  if (!src || broken) return <PhotoAwaitPlaceholder variant="tile" />;
-  return (
-    <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} />
   );
 }
 

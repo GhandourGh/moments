@@ -15,6 +15,7 @@
     { "source": "/api/ai/moderate", "destination": "/api/ai?action=moderate" },
     { "source": "/api/ai/caption", "destination": "/api/ai?action=caption" },
     { "source": "/api/events/:id/photos/:photoId", "destination": "/api/events/:id/photos?photoId=:photoId" },
+    { "source": "/api/events/:id/guests/:guestId", "destination": "/api/events/:id/guests?guestId=:guestId" },
     { "source": "/((?!api/|assets/).*)", "destination": "/index.html" }
   ]
 }

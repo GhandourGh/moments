@@ -8,6 +8,7 @@ import {
   animate,
 } from "framer-motion";
 import TimeBadge from '@/components/ui/TimeBadge.jsx';
+import LazyImage from '@/components/ui/LazyImage.jsx';
 import PhotoAwaitPlaceholder from '@/components/ui/PhotoAwaitPlaceholder.jsx';
 import Lightbox from '@/features/gallery/Lightbox.jsx';
 
@@ -269,7 +270,7 @@ export default function CapturedStrip({ shots }) {
               tabIndex={i >= total ? -1 : 0}
             >
               {s.url ? (
-                <img src={s.url} alt="" loading="lazy" draggable={false} />
+                <LazyImage src={s.url} alt="" variant="strip" draggable={false} />
               ) : (
                 <PhotoAwaitPlaceholder variant="strip" />
               )}

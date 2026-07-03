@@ -9,6 +9,7 @@ import {
 } from '@/config/memoryCardTemplate.js';
 import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { useToast } from '@/components/ui/Toast.jsx';
+import LazyImage from '@/components/ui/LazyImage.jsx';
 import { getEventId } from '@/services/api/index.js';
 
 /**
@@ -434,23 +435,23 @@ export default function Lightbox({ shots, index, onClose, onIndexChange }) {
             onPointerDown={(e) => e.stopPropagation()}
           />
         ) : (
-          <img
+          <LazyImage
             ref={imgRef}
-            className="lb-img"
             src={current.url}
             alt=""
+            variant="dark"
+            className="lazy-img--inline lazy-img--dark"
+            imgClassName="lb-img"
+            loading="eager"
+            fetchPriority="high"
             draggable={false}
-            // Stop click bubbling — we handle close via pointerup so the
-            // movement-vs-tap distinction stays clean.
             onClick={(e) => e.stopPropagation()}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
-            style={{
+            imgStyle={{
               transform: `translate3d(${t.x}px, ${t.y}px, 0) scale(${t.s})`,
-              // No transition during a continuous gesture (wheel / pinch / pan)
-              // — that's what was making zoom feel shaky.
               transition:
                 pointers.current.size || interactingRef.current
                   ? "none"

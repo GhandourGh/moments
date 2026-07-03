@@ -3,17 +3,23 @@ import { Link } from "react-router-dom";
 import HeroCoverField from '@/components/HeroCoverField.jsx';
 import { cleanContent, EMPTY_CONTENT } from '@/features/host/ContentEditor.jsx';
 import {
+  adminDeleteGuest,
   adminDeletePhoto,
   adminListEvents,
+  adminListGuests,
   adminListPhotos,
   adminUpdateEvent,
+  adminUpdateGuest,
   fetchEvent,
 } from '@/services/api/index.js';
+import { isValidName } from '@/state/guest.js';
 import { ADMIN_PASSCODE_KEY } from '@/config/admin.js';
+import LazyImage from '@/components/ui/LazyImage.jsx';
 import { removeShotsFromCache } from '@/state/shotsCache.js';
 
 const TABS = [
   { id: "cover", label: "Cover photo" },
+  { id: "guests", label: "Guests" },
   { id: "photos", label: "Guest photos" },
 ];
 
@@ -68,7 +74,7 @@ export default function Admin() {
         <div>
           <h1 className="admin-title">Dashboard</h1>
           <p className="admin-lede">
-            Manage the guest-page cover and review photos for each event.
+            Manage the guest-page cover, guest list, and photo gallery for each event.
           </p>
         </div>
         {unlocked && (
@@ -157,12 +163,25 @@ export default function Admin() {
                     {t.id === "photos" && (
                       <span className="admin-tab-count">{selected.photos}</span>
                     )}
+                    {t.id === "guests" && (
+                      <span className="admin-tab-count">{selected.guests}</span>
+                    )}
                   </button>
                 ))}
               </nav>
 
               {tab === "cover" ? (
                 <EventCoverPanel event={selected} passcode={passcode} />
+              ) : tab === "guests" ? (
+                <GuestPanel
+                  event={selected}
+                  passcode={passcode}
+                  onGuestDeleted={() => {
+                    setEvents((evts) => evts.map((e) => (
+                      e.id === selected.id ? { ...e, guests: Math.max(0, e.guests - 1) } : e
+                    )));
+                  }}
+                />
               ) : (
                 <PhotoGallery
                   event={selected}
@@ -178,7 +197,7 @@ export default function Admin() {
           ) : (
             <div className="admin-card admin-empty">
               <p className="admin-empty-title">Pick an event</p>
-              <p className="admin-muted">Select an event above to manage its cover photo and gallery.</p>
+              <p className="admin-muted">Select an event above to manage its cover, guests, and gallery.</p>
             </div>
           )}
         </>
@@ -403,7 +422,7 @@ function PhotoGallery({ event, passcode, onPhotoDeleted }) {
                   aria-label={guestLabel(p)}
                 >
                   {p.url ? (
-                    <img src={p.url} loading="lazy" alt="" />
+                    <LazyImage src={p.url} alt="" variant="plain" loading="lazy" />
                   ) : (
                     <span className="admin-thumb-placeholder" aria-hidden />
                   )}
@@ -438,7 +457,14 @@ function PhotoGallery({ event, passcode, onPhotoDeleted }) {
         <div className="admin-preview" role="dialog" aria-modal="true" onClick={() => setPreview(null)}>
           <div className="admin-preview-inner" onClick={(ev) => ev.stopPropagation()}>
             {preview.url ? (
-              <img src={preview.url} alt={guestLabel(preview)} />
+              <LazyImage
+                src={preview.url}
+                alt={guestLabel(preview)}
+                variant="dark"
+                className="lazy-img--inline admin-preview-img"
+                imgClassName="admin-preview-photo"
+                loading="eager"
+              />
             ) : (
               <div className="admin-preview-missing">Image unavailable</div>
             )}
@@ -458,6 +484,230 @@ function PhotoGallery({ event, passcode, onPhotoDeleted }) {
         </div>
       )}
     </>
+  );
+}
+
+function GuestPanel({ event, passcode, onGuestDeleted }) {
+  const [guests, setGuests] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editFirst, setEditFirst] = useState("");
+  const [editLast, setEditLast] = useState("");
+  const [editError, setEditError] = useState("");
+  const [savingId, setSavingId] = useState(null);
+  const [armed, setArmed] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const load = useCallback(async () => {
+    setGuests(null);
+    setLoadError("");
+    setActionError("");
+    setEditingId(null);
+    setArmed(null);
+    try {
+      const res = await adminListGuests(event.id, passcode);
+      setGuests(res.guests ?? []);
+    } catch (err) {
+      setLoadError(err.message || "Couldn't load guests.");
+    }
+  }, [event.id, passcode]);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!armed) return undefined;
+    const id = setTimeout(() => setArmed(null), 4000);
+    return () => clearTimeout(id);
+  }, [armed]);
+
+  function startEdit(guest) {
+    setEditingId(guest.id);
+    setEditFirst(guest.firstName);
+    setEditLast(guest.lastName);
+    setEditError("");
+    setArmed(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditFirst("");
+    setEditLast("");
+    setEditError("");
+  }
+
+  async function saveEdit(guestId) {
+    const first = editFirst.trim();
+    const last = editLast.trim();
+    if (!isValidName(first) || !isValidName(last)) {
+      setEditError("Enter a valid first and last name (letters, 1–40 chars).");
+      return;
+    }
+    setSavingId(guestId);
+    setEditError("");
+    setActionError("");
+    try {
+      const res = await adminUpdateGuest(event.id, guestId, { firstName: first, lastName: last }, passcode);
+      setGuests((gs) => gs.map((g) => (
+        g.id === guestId ? { ...g, ...res.guest, photos: g.photos, videos: g.videos } : g
+      )));
+      cancelEdit();
+    } catch (err) {
+      setEditError(err.message || "Couldn't save that name.");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  async function handleDelete(guest) {
+    if (armed !== guest.id) {
+      setArmed(guest.id);
+      return;
+    }
+    setArmed(null);
+    setDeletingId(guest.id);
+    setActionError("");
+    try {
+      await adminDeleteGuest(event.id, guest.id, passcode);
+      setGuests((gs) => gs.filter((g) => g.id !== guest.id));
+      onGuestDeleted();
+    } catch (err) {
+      setActionError(err.message || "Couldn't delete that guest.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  if (loadError) {
+    return (
+      <div className="admin-card admin-state">
+        <p className="admin-error" role="alert">{loadError}</p>
+        <button type="button" className="btn btn-text" onClick={load}>Retry</button>
+      </div>
+    );
+  }
+
+  if (guests === null) {
+    return (
+      <div className="admin-card admin-state">
+        <p className="admin-muted">Loading guests…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-card admin-guests">
+      <div className="admin-gallery-head">
+        <p className="admin-gallery-lede">
+          Guests who joined this event. Edit a name or remove a guest and their photos.
+        </p>
+        <span className="admin-gallery-count">
+          {guests.length} guest{guests.length === 1 ? "" : "s"}
+        </span>
+        <button type="button" className="btn btn-text" onClick={load}>Refresh</button>
+      </div>
+
+      {!guests.length ? (
+        <div className="admin-gallery-empty">
+          <p className="admin-empty-title">No guests yet</p>
+          <p className="admin-muted">Guests appear here when someone opens the event link and enters their name.</p>
+        </div>
+      ) : (
+        <ul className="admin-guest-list">
+          {guests.map((g) => {
+            const isEditing = editingId === g.id;
+            const mediaCount = (g.photos ?? 0) + (g.videos ?? 0);
+            return (
+              <li key={g.id} className="admin-guest-row">
+                {isEditing ? (
+                  <div className="admin-guest-edit">
+                    <div className="admin-guest-edit-fields">
+                      <label className="admin-guest-field">
+                        <span className="admin-guest-field-label">First name</span>
+                        <input
+                          type="text"
+                          className="wm-input"
+                          value={editFirst}
+                          onChange={(ev) => setEditFirst(ev.target.value)}
+                          autoComplete="given-name"
+                          disabled={savingId === g.id}
+                        />
+                      </label>
+                      <label className="admin-guest-field">
+                        <span className="admin-guest-field-label">Last name</span>
+                        <input
+                          type="text"
+                          className="wm-input"
+                          value={editLast}
+                          onChange={(ev) => setEditLast(ev.target.value)}
+                          autoComplete="family-name"
+                          disabled={savingId === g.id}
+                        />
+                      </label>
+                    </div>
+                    {editError && <p className="admin-error" role="alert">{editError}</p>}
+                    <div className="admin-guest-edit-actions">
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={savingId === g.id}
+                        onClick={() => saveEdit(g.id)}
+                      >
+                        {savingId === g.id ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-text"
+                        disabled={savingId === g.id}
+                        onClick={cancelEdit}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="admin-guest-info">
+                      <span className="admin-guest-name">
+                        {g.firstName} {g.lastName}
+                      </span>
+                      <span className="admin-guest-meta">
+                        {mediaCount > 0
+                          ? `${mediaCount} photo${mediaCount === 1 ? "" : "s"}`
+                          : "No photos yet"}
+                        {" · "}
+                        Joined {new Date(g.createdAt).toLocaleDateString(undefined, {
+                          month: "short", day: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    <div className="admin-guest-actions">
+                      <button
+                        type="button"
+                        className="btn btn-text"
+                        onClick={() => startEdit(g)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn-text admin-guest-del${armed === g.id ? " is-armed" : ""}`}
+                        disabled={deletingId === g.id}
+                        onClick={() => handleDelete(g)}
+                      >
+                        {deletingId === g.id ? "Deleting…" : armed === g.id ? "Confirm delete" : "Delete"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {actionError && <p className="admin-error" role="alert">{actionError}</p>}
+    </div>
   );
 }
 

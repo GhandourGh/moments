@@ -1,5 +1,6 @@
 import React from "react";
 import { useEventContent } from '@/state/eventContent.js';
+import LazyImage from '@/components/ui/LazyImage.jsx';
 import PhotoAwaitPlaceholder from '@/components/ui/PhotoAwaitPlaceholder.jsx';
 
 /**
@@ -34,7 +35,7 @@ export default function MemoryCard({
     >
       <div className="mem-card-photo">
         {shot.url ? (
-          <img src={shot.url} alt="" draggable={false} loading="lazy" />
+          <LazyImage src={shot.url} alt="" variant="frame" draggable={false} />
         ) : (
           <PhotoAwaitPlaceholder variant="frame" />
         )}

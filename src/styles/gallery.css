@@ -69,6 +69,7 @@
 }
 .ph-tile:active { transform: scale(0.96); }
 .ph-tile img,
+.ph-tile .lazy-img-el,
 .ph-tile video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
 
 /* Event-branded placeholder while signed URLs resolve. */

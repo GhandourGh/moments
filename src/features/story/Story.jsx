@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useEventContent } from '@/state/eventContent.js';
+import LazyImage from '@/components/ui/LazyImage.jsx';
 import BackLink from '@/components/layout/BackLink.jsx';
 
 /** Playful copy when chapters are off or not written yet. */
@@ -112,7 +113,12 @@ export default function Story() {
             >
               {chap.image && (
                 <figure className="chap-media">
-                  <img src={chap.image} alt={chap.alt ?? ""} loading="lazy" />
+                  <LazyImage
+                    src={chap.image}
+                    alt={chap.alt ?? ""}
+                    variant="plain"
+                    imgClassName="chap-img"
+                  />
                 </figure>
               )}
               <div className="chap-text">

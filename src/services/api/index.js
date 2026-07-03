@@ -389,6 +389,35 @@ export async function adminDeletePhoto(idOrSlug, photoId, passcode) {
   return { ok: true, ...data };
 }
 
+export async function adminListGuests(idOrSlug, passcode) {
+  const data = await request(
+    `/api/events/${encodeURIComponent(idOrSlug)}/guests`,
+    { retryAuth: false, headers: { "x-admin-passcode": passcode } }
+  );
+  return { ok: true, guests: data.guests, total: data.total };
+}
+
+export async function adminUpdateGuest(idOrSlug, guestId, { firstName, lastName }, passcode) {
+  const data = await request(
+    `/api/events/${encodeURIComponent(idOrSlug)}/guests/${encodeURIComponent(guestId)}`,
+    {
+      method: "PATCH",
+      retryAuth: false,
+      headers: { "x-admin-passcode": passcode },
+      body: { firstName, lastName },
+    }
+  );
+  return { ok: true, guest: data.guest };
+}
+
+export async function adminDeleteGuest(idOrSlug, guestId, passcode) {
+  const data = await request(
+    `/api/events/${encodeURIComponent(idOrSlug)}/guests/${encodeURIComponent(guestId)}`,
+    { method: "DELETE", retryAuth: false, headers: { "x-admin-passcode": passcode } }
+  );
+  return { ok: true, ...data };
+}
+
 /** Upload a hero / cover image for an event (signed URL + storage key returned). */
 export async function adminUploadHeroImage(idOrSlug, blob, passcode) {
   const body = new FormData();

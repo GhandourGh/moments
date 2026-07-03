@@ -26,7 +26,8 @@
     0 1px 0 rgba(28, 26, 23, 0.06),
     0 30px 60px rgba(28, 26, 23, 0.14);
 }
-.chap-media img {
+.chap-media img,
+.chap-media .lazy-img-el {
   width: 100%; height: 100%; object-fit: cover;
 }
 

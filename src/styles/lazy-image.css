@@ -1,0 +1,117 @@
+/* Shared lazy image / video loading shimmer */
+
+.lazy-img {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.lazy-img--inline {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lazy-img-el {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.32s ease;
+}
+
+.lazy-img--inline .lazy-img-el {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.lazy-img-el.is-loaded {
+  opacity: 1;
+}
+
+.lazy-img-shimmer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    110deg,
+    var(--paper-2) 8%,
+    oklch(94% 0 0) 18%,
+    var(--paper-2) 33%
+  );
+  background-size: 200% 100%;
+  animation: lazy-img-shimmer 1.5s ease-in-out infinite;
+  overflow: hidden;
+}
+
+.lazy-img-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 42%,
+    oklch(99% 0.01 50 / 0.45) 50%,
+    transparent 58%
+  );
+  background-size: 220% 100%;
+  animation: lazy-img-shine 2.2s ease-in-out infinite;
+}
+
+.lazy-img-shimmer--dark {
+  background: linear-gradient(110deg, #141210 8%, #242220 18%, #141210 33%);
+}
+
+.lazy-img-shimmer--dark::after {
+  background: linear-gradient(
+    105deg,
+    transparent 42%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 58%
+  );
+}
+
+.lazy-img-shimmer--plain {
+  background: linear-gradient(
+    110deg,
+    var(--paper-2) 8%,
+    oklch(94% 0 0) 18%,
+    var(--paper-2) 33%
+  );
+}
+
+@keyframes lazy-img-shimmer {
+  to { background-position-x: -200%; }
+}
+
+@keyframes lazy-img-shine {
+  0%   { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+
+.lazy-img--inline.lazy-img--dark {
+  min-width: min(72vw, 360px);
+  min-height: min(52vh, 480px);
+}
+
+.lazy-img--inline.lazy-img--dark .lazy-img-shimmer {
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lazy-img-el { transition: none; }
+  .lazy-img-shimmer,
+  .lazy-img-shimmer::after { animation: none; }
+}
