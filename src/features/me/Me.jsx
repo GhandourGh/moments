@@ -8,7 +8,6 @@ import { env } from '@/config/env.js';
 import { hasBackend, matchSelfie, patchSession } from '@/services/api/index.js';
 import { ensureGalleryIndexed } from '@/services/faces/galleryIndex.js';
 import { loadFaceModels } from '@/services/faces/index.js';
-import LazyImage from '@/components/ui/LazyImage.jsx';
 import EmptyState from '@/components/ui/EmptyState.jsx';
 import { getGuest, isValidName, subscribeGuest, updateGuest } from '@/state/guest.js';
 import { isMyShot } from '@/state/guestAttribution.js';
@@ -189,7 +188,7 @@ export default function Me() {
       <div className="me-card">
         <div className="me-card-figure">
           {selfie ? (
-            <LazyImage src={selfie.url} alt="Your selfie" variant="plain" loading="eager" />
+            <img src={selfie.url} alt="Your selfie" loading="eager" decoding="async" />
           ) : (
             <div className="me-card-empty" aria-hidden>
               <SelfieIcon />

@@ -17,7 +17,11 @@ function enabled() {
 
 async function blobFromShot(shot, signal) {
   if (!shot.url) return null;
-  const res = await fetch(shot.url, { signal, credentials: "omit" });
+  const sameOrigin = shot.url.startsWith("/");
+  const res = await fetch(shot.url, {
+    signal,
+    credentials: sameOrigin ? "include" : "omit",
+  });
   if (!res.ok) return null;
   return res.blob();
 }
